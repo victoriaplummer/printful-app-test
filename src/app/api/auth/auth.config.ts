@@ -27,7 +27,8 @@ export const authOptions: AuthOptions = {
         url: "https://www.printful.com/oauth/authorize",
         params: {
           scope: "orders sync_products file_library webhooks",
-          redirect_url: `${process.env.NEXTAUTH_URL}/api/auth/callback/printful`,
+          redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/printful`,
+          state: "printful-oauth-state",
         },
       },
       token: {
