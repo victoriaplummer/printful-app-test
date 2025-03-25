@@ -102,7 +102,6 @@ async function updateSkuQuantity(
 ): Promise<boolean> {
   try {
     console.log(`Updating SKU ${skuId} quantity to ${quantity}`);
-    const currentTimestamp = new Date().toISOString();
 
     const response = await fetch(
       `https://api.webflow.com/v2/sites/${webflowSiteId}/products/${productId}/skus/${skuId}`,
@@ -116,7 +115,6 @@ async function updateSkuQuantity(
         body: JSON.stringify({
           fieldData: {
             quantity: quantity,
-            lastSynced: currentTimestamp,
           },
         }),
       }
@@ -128,9 +126,7 @@ async function updateSkuQuantity(
       return false;
     }
 
-    console.log(
-      `Successfully updated SKU ${skuId} quantity and lastSynced timestamp`
-    );
+    console.log(`Successfully updated SKU ${skuId} quantity`);
     return true;
   } catch (error) {
     console.error(`Error updating SKU: ${error}`);
@@ -143,7 +139,8 @@ interface WebflowProductResponse {
   id?: string; // Add ID to the product response
   fieldData?: {
     printful_id?: string;
-    lastSynced?: string; // Replace sync_variant_id with lastSynced
+    sync_variant_id?: string;
+    lastSynced?: string;
     [key: string]: string | number | boolean | object | undefined;
   };
   sku?: {
@@ -157,6 +154,7 @@ interface WebflowProductResponse {
     id?: string; // Add ID to the SKU response
     fieldData?: {
       printful_id?: string;
+      sync_variant_id?: string;
       [key: string]: string | number | boolean | object | undefined;
     };
   }>;
@@ -373,10 +371,6 @@ export async function POST(request: Request) {
         (c) => c.displayName === "Products"
       );
 
-      const skusCollection = collectionsResponse?.collections?.find(
-        (c) => c.displayName === "SKUs"
-      );
-
       const collectionDetails = await webflow.collections.get(
         productsCollection?.id || ""
       );
@@ -395,15 +389,9 @@ export async function POST(request: Request) {
         (field: SchemaField) => field.displayName === "lastSynced"
       );
 
-      // Check if lastSynced exists in the SKU fields
-      const hasSkuLastSyncedField = schema.some(
-        (field: SchemaField) => field.displayName === "lastSynced"
-      );
-
       console.log(
         `Product field 'lastSynced' exists: ${hasProductLastSyncedField}`
       );
-      console.log(`SKU field 'lastSynced' exists: ${hasSkuLastSyncedField}`);
 
       // Create missing fields with Date type
       if (!hasProductLastSyncedField) {
@@ -425,22 +413,6 @@ export async function POST(request: Request) {
         }
       }
 
-      if (!hasSkuLastSyncedField) {
-        console.log("Creating lastSynced field for SKUs...");
-        try {
-          await webflow.collections.fields.create(skusCollection?.id || "", {
-            displayName: "lastSynced",
-            type: "DateTime",
-            isRequired: false,
-          });
-
-          // Wait for Webflow to propagate schema changes
-          await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds
-        } catch (error) {
-          console.error("Error creating SKU field:", error);
-        }
-      }
-
       // Double-check that schema changes have been applied
       const updatedSchema = await webflow.collections.get(
         productsCollection?.id || ""
@@ -449,11 +421,8 @@ export async function POST(request: Request) {
       const productHasField = updatedSchema.fields.some(
         (field: SchemaField) => field.displayName === "lastSynced"
       );
-      const skuHasField = updatedSchema.fields.some(
-        (field: SchemaField) => field.displayName === "lastSynced"
-      );
 
-      if (!productHasField || !skuHasField) {
+      if (!productHasField) {
         console.warn(
           "Some required fields are still missing after creation attempts"
         );
@@ -474,8 +443,8 @@ export async function POST(request: Request) {
       // Extract all sync_variant_ids from existing products
       for (const product of existingProducts as WebflowProductResponse[]) {
         // Check the product for sync_variant_id
-        if (product.fieldData && product.fieldData["lastSynced"]) {
-          const syncId = product.fieldData["lastSynced"];
+        if (product.fieldData && product.fieldData["sync_variant_id"]) {
+          const syncId = product.fieldData["sync_variant_id"];
           existingSyncVariantIds.push(
             typeof syncId === "string" ? syncId : String(syncId)
           );
@@ -484,8 +453,8 @@ export async function POST(request: Request) {
         // Check all SKUs for sync_variant_id
         if (product.skus && Array.isArray(product.skus)) {
           for (const sku of product.skus) {
-            if (sku.fieldData && sku.fieldData["lastSynced"]) {
-              const syncId = sku.fieldData["lastSynced"];
+            if (sku.fieldData && sku.fieldData["sync_variant_id"]) {
+              const syncId = sku.fieldData["sync_variant_id"];
               existingSyncVariantIds.push(
                 typeof syncId === "string" ? syncId : String(syncId)
               );
@@ -604,7 +573,7 @@ export async function POST(request: Request) {
               .replace(/[^a-z0-9]+/g, "-"),
             description: printfulProduct.description || "",
             ["sku-properties"]: extractSkuProperties(variantsToSync),
-            lastSynced: currentTimestamp,
+            // ["lastSynced"]: currentTimestamp,
           },
         },
         sku: {
@@ -620,8 +589,7 @@ export async function POST(request: Request) {
               currency: "USD",
               unit: "USD",
             },
-            quantity: getQuantityForVariant(firstVariant),
-            lastSynced: currentTimestamp,
+            // quantity: getQuantityForVariant(firstVariant),
             "main-image":
               firstVariant.thumbnail_url || printfulProduct.thumbnail_url,
             ["sku-values"]: generateSkuValues(firstVariant),
@@ -674,10 +642,9 @@ export async function POST(request: Request) {
                       unit: "USD",
                     },
                     quantity: getQuantityForVariant(variant),
-                    lastSynced: currentTimestamp,
-                    ["sku-values"]: variantSkuValues,
-                    ["main-image"]:
+                    "main-image":
                       variant.thumbnail_url || printfulProduct.thumbnail_url,
+                    ["sku-values"]: variantSkuValues,
                   },
                 };
               }),
