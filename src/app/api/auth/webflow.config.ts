@@ -39,7 +39,9 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
       scope:
         "sites:read ecommerce:read ecommerce:write authorized_user:read cms:read cms:write",
       client_id: process.env.WEBFLOW_CLIENT_ID,
-      redirect_uri: process.env.WEBFLOW_REDIRECT_URI,
+      redirect_uri: process.env.WEBFLOW_REDIRECT_URI?.startsWith("http")
+        ? process.env.WEBFLOW_REDIRECT_URI
+        : `https://${process.env.WEBFLOW_REDIRECT_URI}`,
       response_type: "code",
     },
   },
@@ -66,7 +68,10 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
             client_secret: provider.clientSecret || "",
             code: params.code || "",
             grant_type: "authorization_code",
-            redirect_uri: process.env.WEBFLOW_REDIRECT_URI || "",
+            redirect_uri:
+              (process.env.WEBFLOW_REDIRECT_URI?.startsWith("http")
+                ? process.env.WEBFLOW_REDIRECT_URI
+                : `https://${process.env.WEBFLOW_REDIRECT_URI}`) || "",
           } as Record<string, string>).toString(),
         }
       );
