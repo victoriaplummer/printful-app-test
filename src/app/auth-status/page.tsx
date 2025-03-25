@@ -5,7 +5,7 @@ import { useState } from "react";
 
 interface ApiResponse {
   error?: string;
-  result?: any;
+  result?: unknown;
 }
 
 export default function AuthStatusPage() {
