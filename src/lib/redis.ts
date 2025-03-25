@@ -11,10 +11,24 @@ const WEBFLOW_TOKEN_KEY = "auth:webflow:token";
 let useRedisClient = false;
 let redisClient: Redis | null = null;
 
+// Singleton pattern to prevent multiple connections
+let isConnecting = false;
+
 // Only initialize Redis if we're in a production environment or explicitly enabled
-try {
-  // Configure Redis client (only if REDIS_ENABLED is true)
-  if (process.env.REDIS_ENABLED === "true") {
+const getRedisClient = () => {
+  // If we already have a client or we're connecting, return the existing client
+  if (redisClient !== null || isConnecting) {
+    return redisClient;
+  }
+
+  // If Redis is not enabled, don't try to connect
+  if (process.env.REDIS_ENABLED !== "true") {
+    console.log("Redis disabled. Using in-memory storage only.");
+    return null;
+  }
+
+  try {
+    isConnecting = true;
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
     useRedisClient = true;
 
@@ -29,6 +43,7 @@ try {
             "Giving up on Redis connection, using memory storage instead"
           );
           useRedisClient = false;
+          isConnecting = false;
           return null; // Stop retrying
         }
         return 500; // Retry after 500ms
@@ -43,14 +58,17 @@ try {
     redisClient.on("connect", () => {
       console.log("Redis connected successfully");
       useRedisClient = true;
+      isConnecting = false;
     });
-  } else {
-    console.log("Redis disabled. Using in-memory storage only.");
+
+    return redisClient;
+  } catch (error) {
+    console.error("Error initializing Redis:", error);
+    useRedisClient = false;
+    isConnecting = false;
+    return null;
   }
-} catch (error) {
-  console.error("Error initializing Redis:", error);
-  useRedisClient = false;
-}
+};
 
 /**
  * Store a token for a specific provider and user
@@ -68,9 +86,10 @@ export async function storeToken(
   memoryTokenStore[fullKey] = token;
 
   // Try Redis if available
-  if (useRedisClient && redisClient) {
+  const client = getRedisClient();
+  if (useRedisClient && client) {
     try {
-      await redisClient.set(fullKey, token, "EX", expiryInSeconds);
+      await client.set(fullKey, token, "EX", expiryInSeconds);
     } catch (error) {
       console.error(`Redis error (fallback to memory): ${error}`);
     }
@@ -88,9 +107,10 @@ export async function getToken(
   const fullKey = `${key}:${userId}`;
 
   // Try Redis first if available
-  if (useRedisClient && redisClient) {
+  const client = getRedisClient();
+  if (useRedisClient && client) {
     try {
-      const token = await redisClient.get(fullKey);
+      const token = await client.get(fullKey);
       if (token) {
         // Update memory cache
         memoryTokenStore[fullKey] = token;
@@ -120,9 +140,10 @@ export async function storeProviderToken(
   memoryTokenStore[key] = token;
 
   // Try Redis if available
-  if (useRedisClient && redisClient) {
+  const client = getRedisClient();
+  if (useRedisClient && client) {
     try {
-      await redisClient.set(key, token, "EX", expiryInSeconds);
+      await client.set(key, token, "EX", expiryInSeconds);
     } catch (error) {
       console.error(`Redis error (fallback to memory): ${error}`);
     }
@@ -138,9 +159,10 @@ export async function getProviderToken(
   const key = provider === "printful" ? PRINTFUL_TOKEN_KEY : WEBFLOW_TOKEN_KEY;
 
   // Try Redis first if available
-  if (useRedisClient && redisClient) {
+  const client = getRedisClient();
+  if (useRedisClient && client) {
     try {
-      const token = await redisClient.get(key);
+      const token = await client.get(key);
       if (token) {
         // Update memory cache
         memoryTokenStore[key] = token;

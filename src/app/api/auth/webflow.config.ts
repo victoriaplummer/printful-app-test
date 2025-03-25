@@ -73,6 +73,7 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
                 ? process.env.WEBFLOW_REDIRECT_URI
                 : `https://${process.env.WEBFLOW_REDIRECT_URI}`) || "",
           } as Record<string, string>).toString(),
+          signal: AbortSignal.timeout(10000), // 10 second timeout
         }
       );
 
@@ -143,6 +144,7 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
             accept: "application/json",
             "accept-version": "2.0.0",
           },
+          signal: AbortSignal.timeout(10000), // 10 second timeout
         }
       );
 
