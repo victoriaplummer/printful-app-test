@@ -30,12 +30,6 @@ const isAuthPath = () => {
 
 // Only initialize Redis if we're in a production environment or explicitly enabled
 const getRedisClient = () => {
-  // Force memory-only storage if environment variable is set
-  if (process.env.FORCE_MEMORY_STORAGE === "true") {
-    console.log("Forced memory storage mode is enabled");
-    return null;
-  }
-
   // For auth paths, we'll skip Redis to avoid timeout issues
   if (isAuthPath()) {
     console.log("Auth path detected, using memory storage only");
