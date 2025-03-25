@@ -2,13 +2,10 @@
 
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import Navigation from "@/components/Navigation";
 
-export interface ApiResponse {
-  success?: boolean;
-  result?: unknown;
+interface ApiResponse {
   error?: string;
-  [key: string]: unknown;
+  result?: any;
 }
 
 export default function AuthStatusPage() {
@@ -31,49 +28,55 @@ export default function AuthStatusPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navigation />
       <main className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold mb-6">Authentication Status</h1>
 
-          {/* Using daisyUI card component */}
+          {/* Card for the session data */}
           <div className="card bg-base-100 shadow-xl mb-6">
             <div className="card-body">
-              <h2 className="card-title">Session Status: {status}</h2>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="border dark:border-gray-700 p-3 rounded">
-                  <p className="font-medium">Webflow Connected:</p>
-                  <p
-                    className={
-                      session?.webflowAccessToken
-                        ? "text-success"
-                        : "text-error"
-                    }
-                  >
-                    {session?.webflowAccessToken ? "Yes" : "No"}
-                  </p>
-                </div>
-
-                <div className="border dark:border-gray-700 p-3 rounded">
-                  <p className="font-medium">Printful Connected:</p>
-                  <p
-                    className={
-                      session?.printfulAccessToken
-                        ? "text-success"
-                        : "text-error"
-                    }
-                  >
-                    {session?.printfulAccessToken ? "Yes" : "No"}
-                  </p>
-                </div>
+              <h2 className="card-title">Session Status</h2>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Printful</th>
+                      <th>Webflow</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>{status}</td>
+                      <td>
+                        {session?.printfulAccessToken ? (
+                          <span className="badge badge-success">Connected</span>
+                        ) : (
+                          <span className="badge badge-error">
+                            Not Connected
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {session?.webflowAccessToken ? (
+                          <span className="badge badge-success">Connected</span>
+                        ) : (
+                          <span className="badge badge-error">
+                            Not Connected
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
-              <div className="collapse collapse-arrow bg-base-200">
-                <input type="checkbox" />
-                <div className="collapse-title font-medium">Session Data</div>
+              {/* Raw session data - collapsed by default */}
+              <div className="collapse collapse-arrow bg-base-200 mt-4">
+                <input type="checkbox" className="peer" />
+                <div className="collapse-title">Raw Session Data</div>
                 <div className="collapse-content">
-                  <pre className="text-xs overflow-auto bg-base-300 p-3 rounded max-h-64">
+                  <pre className="p-4 bg-neutral text-neutral-content rounded-box overflow-x-auto text-xs">
                     {JSON.stringify(session, null, 2)}
                   </pre>
                 </div>
@@ -81,120 +84,39 @@ export default function AuthStatusPage() {
             </div>
           </div>
 
-          {/* Using daisyUI card for API Test */}
+          {/* Card for API testing */}
           <div className="card bg-base-100 shadow-xl mb-6">
             <div className="card-body">
               <h2 className="card-title">API Test</h2>
+              <p className="text-sm opacity-70 mb-4">
+                Test the Printful API connection by fetching products
+              </p>
 
-              {/* Using daisyUI button component */}
               <button
+                className="btn btn-primary w-full"
                 onClick={testApi}
-                className={`btn btn-primary ${
-                  isLoading ? "btn-disabled loading" : ""
-                }`}
-                disabled={isLoading}
+                disabled={isLoading || !session?.printfulAccessToken}
               >
-                {isLoading ? "Loading..." : "Test Printful API"}
+                {isLoading ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs"></span>
+                    Testing API...
+                  </>
+                ) : (
+                  "Test Printful API"
+                )}
               </button>
 
               {apiResponse && (
-                <div className="collapse collapse-arrow bg-base-200 mt-4">
-                  <input type="checkbox" defaultChecked />
-                  <div className="collapse-title font-medium">API Response</div>
-                  <div className="collapse-content">
-                    <pre className="text-xs overflow-auto bg-base-300 p-3 rounded max-h-64">
+                <div className="mt-4">
+                  <h3 className="font-semibold mb-2">Response:</h3>
+                  <div className="p-4 bg-neutral text-neutral-content rounded-box overflow-x-auto">
+                    <pre className="text-xs whitespace-pre-wrap">
                       {JSON.stringify(apiResponse, null, 2)}
                     </pre>
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Examples of daisyUI components */}
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title">DaisyUI Component Examples</h2>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button className="btn btn-primary">Primary</button>
-                <button className="btn btn-secondary">Secondary</button>
-                <button className="btn btn-accent">Accent</button>
-                <button className="btn btn-info">Info</button>
-                <button className="btn btn-success">Success</button>
-                <button className="btn btn-warning">Warning</button>
-                <button className="btn btn-error">Error</button>
-                <button className="btn btn-ghost">Ghost</button>
-                <button className="btn btn-link">Link</button>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button className="btn btn-sm">Small</button>
-                <button className="btn">Normal</button>
-                <button className="btn btn-lg">Large</button>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button className="btn btn-disabled">Disabled</button>
-                <button className="btn loading">Loading</button>
-                <button className="btn btn-block mt-2">Full Width</button>
-              </div>
-
-              <div className="divider">Other Components</div>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                <div className="badge">Badge</div>
-                <div className="badge badge-primary">Primary</div>
-                <div className="badge badge-secondary">Secondary</div>
-              </div>
-
-              <div className="flex items-center gap-4 mb-4">
-                <input type="checkbox" className="toggle toggle-primary" />
-                <input
-                  type="checkbox"
-                  checked
-                  className="toggle toggle-secondary"
-                />
-                <input type="checkbox" className="checkbox" />
-                <input
-                  type="checkbox"
-                  checked
-                  className="checkbox checkbox-primary"
-                />
-                <input type="radio" name="radio-1" className="radio" />
-                <input
-                  type="radio"
-                  name="radio-1"
-                  className="radio radio-primary"
-                  checked
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Example Input</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Type here"
-                    className="input input-bordered"
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Example Select</span>
-                  </label>
-                  <select className="select select-bordered">
-                    <option disabled selected>
-                      Pick one
-                    </option>
-                    <option>Option 1</option>
-                    <option>Option 2</option>
-                    <option>Option 3</option>
-                  </select>
-                </div>
-              </div>
             </div>
           </div>
         </div>

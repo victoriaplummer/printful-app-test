@@ -3,13 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Navigation from "../../components/Navigation";
-import WebflowSettings, {
-  WebflowSettingsData,
-} from "@/components/webflow/WebflowSettings";
+import WebflowSettings from "@/components/webflow/WebflowSettings";
 import { ProductsList } from "@/components/products/ProductsList";
 import { ProductsFilters } from "@/components/products/ProductsFilters";
 import { useQuery } from "@tanstack/react-query";
+import { useWebflowSettings } from "@/hooks/useWebflowSettings";
 
 // API function
 const fetchProducts = async () => {
@@ -40,15 +38,7 @@ const fetchProducts = async () => {
 export default function ProductsPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const [selectedSiteId, setSelectedSiteId] = useState<string>("");
-  const [webflowSettings, setWebflowSettings] = useState<WebflowSettingsData>({
-    siteId: "",
-    syncOptions: {
-      autoDraft: true,
-      includeImages: true,
-      skipExisting: false,
-    },
-  });
+  const { settings, updateSettings } = useWebflowSettings();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -64,29 +54,6 @@ export default function ProductsPage() {
       return;
     }
   }, [session, router]);
-
-  // Handler for WebflowSettings changes
-  const handleSettingsChange = (settings: WebflowSettingsData) => {
-    console.log("Settings changed:", settings);
-    setWebflowSettings(settings);
-    setSelectedSiteId(settings.siteId); // Update selected site ID for product filtering
-    // Save to localStorage for persistence
-    localStorage.setItem("webflowSettings", JSON.stringify(settings));
-  };
-
-  // Load settings from localStorage on component mount
-  useEffect(() => {
-    const savedSettings = localStorage.getItem("webflowSettings");
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        setWebflowSettings(parsed);
-        setSelectedSiteId(parsed.siteId);
-      } catch (e) {
-        console.error("Failed to parse saved settings", e);
-      }
-    }
-  }, []);
 
   // Fetch products with TanStack Query
   const {
@@ -114,7 +81,6 @@ export default function ProductsPage() {
   if (!session) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Navigation />
         <main className="flex-1 p-8">
           <div className="max-w-6xl mx-auto">
             <h1 className="text-2xl font-bold mb-4">Loading...</h1>
@@ -126,7 +92,6 @@ export default function ProductsPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navigation />
       <main className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-2xl font-bold mb-4">Printful Product Variants</h1>
@@ -134,8 +99,8 @@ export default function ProductsPage() {
           {/* WebflowSettings card */}
           <div className="mb-6">
             <WebflowSettings
-              onSettingsChange={handleSettingsChange}
-              initialSettings={webflowSettings || undefined}
+              onSettingsChange={updateSettings}
+              initialSettings={settings}
             />
           </div>
 
@@ -172,7 +137,7 @@ export default function ProductsPage() {
             </div>
           )}
 
-          {selectedSiteId && !isLoadingProducts && !productsError ? (
+          {settings.siteId && !isLoadingProducts && !productsError ? (
             // Show products only when a site is selected and products are loaded
             <div>
               <ProductsFilters
@@ -186,11 +151,11 @@ export default function ProductsPage() {
                 products={products}
                 searchQuery={searchQuery}
                 statusFilter={statusFilter}
-                selectedSiteId={selectedSiteId}
-                webflowSettings={webflowSettings}
+                selectedSiteId={settings.siteId}
+                webflowSettings={settings}
               />
             </div>
-          ) : !selectedSiteId ? (
+          ) : !settings.siteId ? (
             // Show message if no site is selected
             <div className="alert alert-info">
               <svg

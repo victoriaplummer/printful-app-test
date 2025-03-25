@@ -36,7 +36,6 @@ export async function GET() {
     });
 
     // Fetch the user's sites using the webflow.sites.list() method
-    console.log("Fetching Webflow sites...");
     const sitesResponse = (await webflow.sites.list()) as SitesResponse;
 
     // Initialize sites array
@@ -57,23 +56,12 @@ export async function GET() {
       sites = [sitesResponse as unknown as WebflowSite];
     }
 
-    console.log("Sites count:", sites.length);
-
-    if (sites.length === 0) {
-      console.log(
-        "Warning: No sites were found or extracted from the response"
-      );
-    }
-
     return NextResponse.json({
       sites,
       count: sites.length,
     });
   } catch (error) {
-    console.error(
-      "Error fetching sites with Webflow SDK:",
-      error instanceof Error ? error.message : String(error)
-    );
+    console.error("Error fetching Webflow sites:", error);
     return NextResponse.json(
       {
         error: "Failed to fetch Webflow sites",

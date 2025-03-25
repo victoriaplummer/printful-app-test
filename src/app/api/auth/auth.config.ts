@@ -113,13 +113,13 @@ export const authOptions: AuthOptions = {
     },
 
     async session({ session, token }) {
-      console.log("Session Callback:", {
-        tokenInfo: {
-          hasPrintful: !!token.printfulAccessToken,
-          hasWebflow: !!token.webflowAccessToken,
-          email: token.email,
-        },
-      });
+      // console.log("Session Callback:", {
+      //   tokenInfo: {
+      //     hasPrintful: !!token.printfulAccessToken,
+      //     hasWebflow: !!token.webflowAccessToken,
+      //     email: token.email,
+      //   },
+      // });
 
       // Copy user details from token to session
       const typedSession = session as UserSession;

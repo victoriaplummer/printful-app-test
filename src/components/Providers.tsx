@@ -9,7 +9,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <SessionProvider>
+    <SessionProvider refetchInterval={5 * 60}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>{children}</ThemeProvider>
       </QueryClientProvider>

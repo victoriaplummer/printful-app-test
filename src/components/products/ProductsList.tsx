@@ -2,7 +2,7 @@ import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import SyncStatus from "@/components/SyncStatus";
 import Image from "next/image";
-import { WebflowSettingsData } from "@/components/webflow/WebflowSettings";
+import WebflowSettingsData from "@/components/webflow/WebflowSettings";
 
 interface PrintfulVariant {
   id: string;
@@ -10,7 +10,7 @@ interface PrintfulVariant {
   variant_id: string;
   product_id: string;
   retail_price: string;
-  sync_status?: "pending" | "synced" | "not_synced" | "error";
+  sync_status?: "synced" | "stale" | "warning" | "not_synced";
   sku?: string;
   price?: string | number;
   lastSynced?: string;
@@ -72,7 +72,6 @@ const syncProduct = async ({
       headers: {
         "Content-Type": "application/json",
       },
-      // Include credentials to send cookies with the request
       credentials: "include",
       body: JSON.stringify({
         productId,
@@ -90,27 +89,26 @@ const syncProduct = async ({
       headers: Object.fromEntries([...response.headers.entries()]),
     });
 
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-        console.error("Error response from API:", errorData);
-      } catch (parseError) {
-        console.error("Failed to parse error response:", parseError);
-        errorData = { error: "Could not parse error response" };
-      }
+    // Try to get the response text first
+    const responseText = await response.text();
+    console.log("Raw response:", responseText);
 
-      throw new Error(
-        errorData.error ||
-          `Failed to sync product: ${response.status} ${response.statusText}`
-      );
+    let result;
+    try {
+      // Try to parse as JSON if possible
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse response as JSON:", parseError);
+      throw new Error(responseText || "Unknown server error");
     }
 
-    const result = await response.json();
-    console.log("Sync result:", result);
+    if (!response.ok) {
+      throw new Error(result.error || `Server error: ${response.statusText}`);
+    }
+
     return result;
   } catch (error) {
-    console.error("Error syncing product:", error);
+    console.error("Error in sync process:", error);
     throw error;
   }
 };
@@ -228,6 +226,21 @@ const ProductHeader: React.FC<{
   </tr>
 );
 
+// Add a helper function to determine sync status based on lastSynced
+const getSyncStatus = (lastSynced?: string): PrintfulVariant["sync_status"] => {
+  if (!lastSynced) return "not_synced";
+
+  const now = new Date();
+  const syncDate = new Date(lastSynced);
+  const daysDifference = Math.floor(
+    (now.getTime() - syncDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysDifference <= 10) return "synced";
+  if (daysDifference <= 30) return "warning";
+  return "stale";
+};
+
 // Main component
 export const ProductsList: React.FC<ProductsListProps> = ({
   products,
@@ -246,42 +259,36 @@ export const ProductsList: React.FC<ProductsListProps> = ({
   } = useMutation({
     mutationFn: syncProduct,
     onSuccess: (data, variables) => {
-      // Update the UI to show that the product was synced
-      if (data.status === "success" || data.status === "already_synced") {
-        // Show success message
-        console.log(
-          `Product ${variables.productId} synced successfully: ${data.message}`
-        );
+      console.log("Sync completed successfully:", data);
 
-        // Invalidate the products query to refetch with updated data
-        queryClient.invalidateQueries({ queryKey: ["products"] });
-      } else {
-        // If there was an error in the response
-        console.error(`Error syncing product: ${data.error || data.message}`);
-      }
+      // Optimistically update the cache
+      queryClient.setQueriesData({ queryKey: ["products"] }, (oldData: any) => {
+        if (!Array.isArray(oldData)) return oldData;
+
+        return oldData.map((product: Product) => {
+          if (product.id === variables.productId) {
+            return {
+              ...product,
+              variants: product.variants.map((variant) => ({
+                ...variant,
+                lastSynced: new Date().toISOString(),
+                sync_status: "synced",
+              })),
+            };
+          }
+          return product;
+        });
+      });
+
+      // Instead of invalidating, we'll refetch in the background
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+        refetchType: "active",
+      });
     },
-    onError: (error) => {
-      console.error("Error syncing product:", error);
-
-      // Extract the error message for display
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Unknown error occurred during sync";
-
-      // Here you could implement a toast notification
-      console.error(`Sync failed: ${errorMessage}`);
-
-      // If the error indicates authentication issues, we should redirect or prompt login
-      if (
-        errorMessage.includes("Unauthorized") ||
-        errorMessage.includes("logged in")
-      ) {
-        console.error(
-          "Authentication issue detected. User may need to log in again."
-        );
-        // You could implement a redirect to login page or show a modal
-      }
+    onError: (error: Error) => {
+      console.error("Sync failed:", error.message);
+      // Optionally revert the optimistic update here
     },
   });
 
@@ -292,26 +299,14 @@ export const ProductsList: React.FC<ProductsListProps> = ({
       return;
     }
 
-    // Debug output to verify proper settings structure
-    console.log("Starting sync with settings:", {
-      siteId: selectedSiteId,
-      webflowSettings,
-      hasRequiredProps: {
-        siteId: !!webflowSettings.siteId,
-        syncOptions: !!webflowSettings.syncOptions,
-        syncOptionsProps: webflowSettings.syncOptions
-          ? Object.keys(webflowSettings.syncOptions)
-          : [],
-      },
-    });
-
     try {
       await syncProductMutation({
         productId,
         settings: webflowSettings,
       });
     } catch (error) {
-      console.error("Error syncing product:", error);
+      console.error("Error in handleSyncProduct:", error);
+      // You could add an error toast here
     }
   };
 
@@ -369,29 +364,33 @@ export const ProductsList: React.FC<ProductsListProps> = ({
         return false;
       })
       .map((product) => {
-        // Ensure variants is always an array before mapping
         const variants = Array.isArray(product.variants)
           ? product.variants
           : [];
         return {
           ...product,
-          // Map the variants to ensure they have the required PrintfulVariant fields
-          filteredVariants: variants.map((variant: PrintfulVariant) => ({
-            ...variant,
-            id:
-              variant.id ||
-              `${product.id}-${Math.random().toString(36).substring(2, 11)}`,
-            product_id: variant.product_id || product.id, // Ensure product_id exists
-            variant_id:
-              variant.variant_id ||
-              variant.id ||
-              `variant-${Math.random().toString(36).substring(2, 11)}`, // Use variant_id or fallback to id
-            retail_price:
-              variant.retail_price ||
-              (variant.price ? variant.price.toString() : "0.00"), // Convert price if needed
-            name: variant.name || "Unnamed Variant",
-            sync_status: variant.sync_status || "not_synced",
-          })) as PrintfulVariant[],
+          filteredVariants: variants.map((variant: PrintfulVariant) => {
+            // Get the lastSynced value from the variant
+            const lastSynced = variant.lastSynced || undefined;
+
+            return {
+              ...variant,
+              id:
+                variant.id ||
+                `${product.id}-${Math.random().toString(36).substring(2, 11)}`,
+              product_id: variant.product_id || product.id,
+              variant_id:
+                variant.variant_id ||
+                variant.id ||
+                `variant-${Math.random().toString(36).substring(2, 11)}`,
+              retail_price:
+                variant.retail_price ||
+                (variant.price ? variant.price.toString() : "0.00"),
+              name: variant.name || "Unnamed Variant",
+              lastSynced: lastSynced,
+              sync_status: getSyncStatus(lastSynced),
+            };
+          }) as PrintfulVariant[],
         };
       }) as ProductWithVariants[];
   }, [products, searchQuery, statusFilter]);
@@ -403,6 +402,16 @@ export const ProductsList: React.FC<ProductsListProps> = ({
       0
     );
   }, [filteredProducts]);
+
+  // Configure default options for this component
+  React.useEffect(() => {
+    queryClient.setDefaultOptions({
+      queries: {
+        staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+        cacheTime: 1000 * 60 * 30, // Keep unused data in cache for 30 minutes
+      },
+    });
+  }, [queryClient]);
 
   if (filteredProducts.length === 0) {
     return (

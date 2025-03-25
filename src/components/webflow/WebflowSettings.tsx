@@ -1,26 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import WebflowSiteSelector from "@/components/WebflowSiteSelector";
+import { useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import WebflowSiteSelector from "@/components/WebflowSiteSelector";
+import {
+  useWebflowSettings,
+  WebflowSettingsData,
+} from "@/hooks/useWebflowSettings";
 
 interface WebflowSettingsProps {
   onSettingsChange?: (settings: WebflowSettingsData) => void;
   initialSettings?: Partial<WebflowSettingsData>;
-}
-
-export interface WebflowSettingsData {
-  siteId: string;
-  syncOptions: {
-    autoDraft: boolean;
-    includeImages: boolean;
-    skipExisting: boolean;
-  };
-}
-
-interface WebflowCollection {
-  id: string;
-  displayName: string;
 }
 
 export default function WebflowSettings({
@@ -28,24 +19,47 @@ export default function WebflowSettings({
   initialSettings,
 }: WebflowSettingsProps) {
   const { data: session } = useSession();
-  const [settings, setSettings] = useState<WebflowSettingsData>({
-    siteId: initialSettings?.siteId || "",
-    syncOptions: {
-      autoDraft: initialSettings?.syncOptions?.autoDraft ?? true,
-      includeImages: initialSettings?.syncOptions?.includeImages ?? true,
-      skipExisting: initialSettings?.syncOptions?.skipExisting ?? false,
+  const { settings, updateSettings } = useWebflowSettings();
+  const queryClient = useQueryClient();
+
+  // Fetch sites using TanStack Query
+  const { data: sites, isLoading } = useQuery({
+    queryKey: ["webflow-sites"],
+    queryFn: async () => {
+      const response = await fetch("/api/webflow/sites");
+      if (!response.ok) {
+        throw new Error("Failed to fetch sites");
+      }
+      return response.json();
     },
+    enabled: !!session?.webflowAccessToken,
   });
-  const [collections, setCollections] = useState<WebflowCollection[]>([]);
-  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
+
+  // Apply initial settings if provided
+  useEffect(() => {
+    if (initialSettings) {
+      updateSettings({
+        ...settings,
+        ...initialSettings,
+        syncOptions: {
+          ...settings.syncOptions,
+          ...initialSettings.syncOptions,
+        },
+      });
+    }
+  }, [initialSettings]);
 
   const handleSiteChange = (siteId: string) => {
     const updatedSettings = {
       ...settings,
       siteId,
     };
-    setSettings(updatedSettings);
+    updateSettings(updatedSettings);
     onSettingsChange?.(updatedSettings);
+
+    // Invalidate both orders and order details queries
+    queryClient.invalidateQueries({ queryKey: ["orders"] });
+    queryClient.invalidateQueries({ queryKey: ["order-details"] });
   };
 
   const handleToggleOption = (
@@ -58,46 +72,9 @@ export default function WebflowSettings({
         [option]: !settings.syncOptions[option],
       },
     };
-    setSettings(updatedSettings);
+    updateSettings(updatedSettings);
     onSettingsChange?.(updatedSettings);
   };
-
-  // Load collections when site ID changes
-  const loadCollections = async (siteId: string) => {
-    if (!siteId || !session?.webflowAccessToken) return;
-
-    setIsLoadingCollections(true);
-
-    try {
-      const response = await fetch(
-        `/api/webflow/collections?siteId=${siteId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error("Failed to load collections:", response.statusText);
-        return;
-      }
-
-      const data = await response.json();
-      setCollections(data.collections || []);
-    } catch (error) {
-      console.error("Error loading collections:", error);
-    } finally {
-      setIsLoadingCollections(false);
-    }
-  };
-
-  // Load collections on initial render if we have a site ID
-  useEffect(() => {
-    if (settings.siteId) {
-      loadCollections(settings.siteId);
-    }
-  }, []);
 
   if (!session?.webflowAccessToken) {
     return (
@@ -120,6 +97,10 @@ export default function WebflowSettings({
     );
   }
 
+  if (isLoading) {
+    return <div>Loading sites...</div>;
+  }
+
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body">
@@ -129,8 +110,9 @@ export default function WebflowSettings({
         </p>
 
         <WebflowSiteSelector
-          onSiteSelect={handleSiteChange}
+          sites={sites?.result || []}
           selectedSiteId={settings.siteId}
+          onSiteSelect={handleSiteChange}
         />
 
         {settings.siteId && (

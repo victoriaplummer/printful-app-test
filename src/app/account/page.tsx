@@ -3,7 +3,6 @@
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/Navigation";
 
 export default function AccountPage() {
   const { data: session, status, update } = useSession();
@@ -39,7 +38,6 @@ export default function AccountPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen flex-col">
-        <Navigation />
         <main className="flex-1 p-4">
           <div className="max-w-lg mx-auto">
             <div className="flex justify-center items-center h-32">
@@ -53,7 +51,6 @@ export default function AccountPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navigation />
       <main className="flex-1 p-4">
         <div className="max-w-lg mx-auto">
           <div className="card bg-base-100 shadow">
