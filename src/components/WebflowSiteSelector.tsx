@@ -6,6 +6,8 @@ interface WebflowSite {
   id: string;
   name: string;
   domains?: string[];
+  displayName?: string;
+  shortName?: string;
 }
 
 interface WebflowSiteSelectorProps {
@@ -125,11 +127,11 @@ export default function WebflowSiteSelector({
         onChange={handleSiteChange}
       >
         <option value="" disabled>
-          {webflowSites.length > 1 ? "Select a Webflow site" : ""}
+          {webflowSites.length > 1 ? "Select a Webflow site" : "Select site"}
         </option>
-        {webflowSites.map((site) => (
+        {webflowSites.map((site: WebflowSite) => (
           <option key={site.id} value={site.id} className="text-base-content">
-            {site.name}
+            {site.displayName || site.shortName}
           </option>
         ))}
       </select>
