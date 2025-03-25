@@ -14,8 +14,34 @@ let redisClient: Redis | null = null;
 // Singleton pattern to prevent multiple connections
 let isConnecting = false;
 
+// Determine if we're in an auth path
+const isAuthPath = () => {
+  if (typeof window === "undefined") {
+    // Check if we're in an auth-related path
+    const isNextAuthPath =
+      process.env.NEXT_RUNTIME === "nodejs" &&
+      (process.env.PATH_INFO?.includes("/api/auth") ||
+        process.env.NEXT_URL?.includes("/api/auth"));
+
+    return isNextAuthPath;
+  }
+  return false;
+};
+
 // Only initialize Redis if we're in a production environment or explicitly enabled
 const getRedisClient = () => {
+  // Force memory-only storage if environment variable is set
+  if (process.env.FORCE_MEMORY_STORAGE === "true") {
+    console.log("Forced memory storage mode is enabled");
+    return null;
+  }
+
+  // For auth paths, we'll skip Redis to avoid timeout issues
+  if (isAuthPath()) {
+    console.log("Auth path detected, using memory storage only");
+    return null;
+  }
+
   // If we already have a client or we're connecting, return the existing client
   if (redisClient !== null || isConnecting) {
     return redisClient;
