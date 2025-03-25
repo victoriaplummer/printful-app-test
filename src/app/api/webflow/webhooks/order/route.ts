@@ -27,7 +27,7 @@ interface WebflowOrder {
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.accessToken) {
+  if (!session?.printfulAccessToken) {
     return NextResponse.json(
       { error: "Printful authentication required" },
       { status: 401 }
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const response = await fetch("https://api.printful.com/orders", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${session.accessToken}`,
+        Authorization: `Bearer ${session.printfulAccessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(printfulOrder),

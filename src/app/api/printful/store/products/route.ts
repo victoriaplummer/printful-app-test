@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/auth.config";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
+import { getProviderToken } from "../../../auth/printful.config";
 
 // Define interfaces for type safety
 interface PrintfulVariant {
@@ -34,6 +35,26 @@ interface WebflowProduct {
 export async function GET() {
   const session = await getServerSession(authOptions);
 
+  if (!session) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
+  }
+
+  if (!session.printfulAccessToken) {
+    // Try to get token from Redis/memory as fallback
+    const token = await getProviderToken("printful");
+    if (!token) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+    // Use the token from Redis/memory
+    session.printfulAccessToken = token;
+  }
+
   // Debug: Log session details
   // console.log("Printful Store Products API - Session:", {
   //   hasSession: !!session,
@@ -43,13 +64,6 @@ export async function GET() {
   //     : "none",
   //   sessionKeys: session ? Object.keys(session) : [],
   // });
-
-  if (!session?.printfulAccessToken) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 }
-    );
-  }
 
   try {
     console.log(

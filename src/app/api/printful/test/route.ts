@@ -14,9 +14,9 @@ export async function GET() {
 
   return NextResponse.json({
     authenticated: true,
-    hasAccessToken: Boolean(session.accessToken),
-    accessTokenPreview: session.accessToken
-      ? `${session.accessToken.substring(0, 10)}...`
+    hasAccessToken: Boolean(session.printfulAccessToken),
+    accessTokenPreview: session.printfulAccessToken
+      ? `${session.printfulAccessToken.substring(0, 10)}...`
       : null,
   });
 }

@@ -1,7 +1,7 @@
 import { AuthOptions } from "next-auth";
 import { printfulConfig } from "./printful.config";
 import { webflowConfig } from "./webflow.config";
-import { DefaultSession } from "next-auth";
+import { authStorage } from "../../../lib/storage";
 
 if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
   throw new Error("Missing Printful OAuth credentials");
@@ -15,15 +15,6 @@ if (!process.env.NEXTAUTH_URL) {
   throw new Error("Missing NEXTAUTH_URL environment variable");
 }
 
-// For type safety
-type UserSession = {
-  user?: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  } & DefaultSession["user"];
-};
-
 export const authOptions: AuthOptions = {
   providers: [webflowConfig, printfulConfig], // Order matters - Webflow first
   session: {
@@ -32,56 +23,39 @@ export const authOptions: AuthOptions = {
   },
   callbacks: {
     async signIn() {
+      // Always allow sign in
       return true;
     },
 
-    async jwt({ token, account, user, trigger }) {
-      // For sign-ins, we need to preserve existing tokens
-      if (trigger === "signIn" && account) {
-        // If signing in with Printful
-        if (account.provider === "printful") {
-          // Save the new Printful token while preserving Webflow token
-          token.printfulAccessToken = account.access_token;
-        }
-        // If signing in with Webflow
-        else if (account.provider === "webflow") {
-          // Save the new Webflow token while preserving Printful token
-          token.webflowAccessToken = account.access_token;
-          if (user?.email) token.email = user.email;
+    async jwt({ token, account }) {
+      if (account) {
+        // Store tokens in storage instead of JWT
+        if (account.provider === "printful" && account.access_token) {
+          authStorage.setPrintfulAuth(
+            account.access_token,
+            typeof account.expires_in === "number"
+              ? account.expires_in
+              : undefined
+          );
+        } else if (account.provider === "webflow" && account.access_token) {
+          authStorage.setWebflowAuth(
+            account.access_token,
+            typeof account.expires_in === "number"
+              ? account.expires_in
+              : undefined
+          );
         }
       }
-
-      // console.log("JWT Callback:", {
-      //   hasPrintful: !!token.printfulAccessToken,
-      //   hasWebflow: !!token.webflowAccessToken,
-      //   email: token.email,
-      // });
-
       return token;
     },
 
-    async session({ session, token }) {
-      // Copy user details from token to session
-      const typedSession = session as UserSession;
-
-      if (!typedSession.user) {
-        typedSession.user = {};
-      }
-
-      if (token.email) typedSession.user.email = token.email;
-      if (token.name) typedSession.user.name = token.name;
-
-      // Add tokens to session
-      session.printfulAccessToken = token.printfulAccessToken as
-        | string
-        | undefined;
-      session.webflowAccessToken = token.webflowAccessToken as
-        | string
-        | undefined;
+    async session({ session }) {
+      // Get tokens from storage
+      session.printfulAccessToken = authStorage.getPrintfulAuth();
+      session.webflowAccessToken = authStorage.getWebflowAuth();
       session.isMultiConnected = !!(
-        token.printfulAccessToken && token.webflowAccessToken
+        session.printfulAccessToken && session.webflowAccessToken
       );
-
       return session;
     },
   },

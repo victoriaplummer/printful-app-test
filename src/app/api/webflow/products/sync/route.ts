@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   console.log("Request body:", JSON.stringify(body, null, 2));
 
-  if (!session?.accessToken || !session?.webflowAccessToken) {
+  if (!session?.printfulAccessToken || !session?.webflowAccessToken) {
     return NextResponse.json(
       { error: "Authentication required for both services" },
       { status: 401 }
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       "https://api.printful.com/store/products",
       {
         headers: {
-          Authorization: `Bearer ${session.accessToken}`,
+          Authorization: `Bearer ${session.printfulAccessToken}`,
         },
       }
     );

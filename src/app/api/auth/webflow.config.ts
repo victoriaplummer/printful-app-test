@@ -2,11 +2,9 @@ import type { OAuthConfig } from "next-auth/providers/oauth";
 
 declare module "next-auth" {
   interface Session {
-    accessToken?: string;
     webflowAccessToken?: string;
   }
   interface JWT {
-    accessToken?: string;
     webflowAccessToken?: string;
   }
 }

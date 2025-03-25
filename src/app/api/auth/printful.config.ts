@@ -1,4 +1,5 @@
 import type { OAuthConfig } from "next-auth/providers/oauth";
+import { authStorage } from "../../../lib/storage";
 
 declare module "next-auth" {
   interface Session {
@@ -37,7 +38,9 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
     url: "https://www.printful.com/oauth/authorize",
     params: {
       client_id: process.env.PRINTFUL_CLIENT_ID,
-      redirect_url: `https://${process.env.NEXTAUTH_URL}/api/auth/callback/printful`,
+      redirect_url: `${
+        process.env.NODE_ENV === "production" ? "https://" : ""
+      }${process.env.NEXTAUTH_URL}/api/auth/callback/printful`,
       response_type: "code",
     },
   },
@@ -45,7 +48,9 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
     url: "https://www.printful.com/oauth/token",
     async request(context) {
       const { provider, params } = context;
-      const redirect_url = `https://${process.env.NEXTAUTH_URL}/api/auth/callback/printful`;
+      const redirect_url = `${
+        process.env.NODE_ENV === "production" ? "https://" : ""
+      }${process.env.NEXTAUTH_URL}/api/auth/callback/printful`;
 
       const response = await fetch("https://www.printful.com/oauth/token", {
         method: "POST",
@@ -108,10 +113,19 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
   clientSecret: process.env.PRINTFUL_CLIENT_SECRET,
   profile(profile: PrintfulProfile) {
     return {
-      id: profile.sub,
-      name: profile.name,
+      id: "printful-" + Date.now(),
+      name: profile.name || "Printful Store",
       email: undefined,
       image: undefined,
     };
   },
 };
+
+export async function getProviderToken(
+  provider: string
+): Promise<string | null> {
+  if (provider === "printful") {
+    return authStorage.getPrintfulAuth();
+  }
+  return null;
+}
