@@ -1,7 +1,7 @@
 import { AuthOptions } from "next-auth";
 import { printfulConfig } from "./printful.config";
 import { webflowConfig } from "./webflow.config";
-import { authStorage } from "../../../lib/storage";
+import redisUtils from "../../../lib/redis";
 
 if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
   throw new Error("Missing Printful OAuth credentials");
@@ -29,30 +29,40 @@ export const authOptions: AuthOptions = {
 
     async jwt({ token, account }) {
       if (account) {
-        // Store tokens in storage instead of JWT
+        // Store tokens in both Redis and JWT, preserving existing tokens
         if (account.provider === "printful" && account.access_token) {
-          authStorage.setPrintfulAuth(
-            account.access_token,
-            typeof account.expires_in === "number"
-              ? account.expires_in
-              : undefined
-          );
+          await redisUtils.storeProviderToken("printful", account.access_token);
+          token.printfulAccessToken = account.access_token; // Store in JWT
+          // Preserve webflow token if it exists
+          if (!token.webflowAccessToken) {
+            token.webflowAccessToken =
+              (await redisUtils.getProviderToken("webflow")) || undefined;
+          }
         } else if (account.provider === "webflow" && account.access_token) {
-          authStorage.setWebflowAuth(
-            account.access_token,
-            typeof account.expires_in === "number"
-              ? account.expires_in
-              : undefined
-          );
+          await redisUtils.storeProviderToken("webflow", account.access_token);
+          token.webflowAccessToken = account.access_token; // Store in JWT
+          // Preserve printful token if it exists
+          if (!token.printfulAccessToken) {
+            token.printfulAccessToken =
+              (await redisUtils.getProviderToken("printful")) || undefined;
+          }
         }
       }
       return token;
     },
 
-    async session({ session }) {
-      // Get tokens from storage
-      session.printfulAccessToken = authStorage.getPrintfulAuth();
-      session.webflowAccessToken = authStorage.getWebflowAuth();
+    async session({ session, token }) {
+      // Always try both JWT and Redis for each provider
+      session.printfulAccessToken =
+        token.printfulAccessToken ||
+        (await redisUtils.getProviderToken("printful")) ||
+        undefined;
+
+      session.webflowAccessToken =
+        token.webflowAccessToken ||
+        (await redisUtils.getProviderToken("webflow")) ||
+        undefined;
+
       session.isMultiConnected = !!(
         session.printfulAccessToken && session.webflowAccessToken
       );

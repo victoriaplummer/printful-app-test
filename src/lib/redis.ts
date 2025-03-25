@@ -1,5 +1,10 @@
 import Redis from "ioredis";
 
+// Add this check at the top of the file
+if (typeof window !== "undefined") {
+  throw new Error("Redis client should only be used in server-side code");
+}
+
 // In-memory fallback for tokens when Redis is unavailable
 const memoryTokenStore: Record<string, string> = {};
 
@@ -13,6 +18,10 @@ let redisClient: Redis | null = null;
 
 // Singleton pattern to prevent multiple connections
 let isConnecting = false;
+
+// Add at the top of the file
+const memoryCache: Record<string, { value: string; expires: number }> = {};
+const CACHE_TTL = 60 * 1000; // 1 minute cache
 
 // Determine if we're in an auth path
 const isAuthPath = () => {
@@ -41,32 +50,33 @@ const getRedisClient = () => {
     return redisClient;
   }
 
-  // If Redis is not enabled, don't try to connect
-  if (process.env.REDIS_ENABLED !== "true") {
-    console.log("Redis disabled. Using in-memory storage only.");
-    return null;
-  }
-
   try {
     isConnecting = true;
-    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+
+    // Upstash Redis URL format: redis://username:password@host:port
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      console.log("No Redis URL provided. Using in-memory storage only.");
+      return null;
+    }
+
     useRedisClient = true;
 
     redisClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: 1, // Reduce retries to avoid hanging
-      connectTimeout: 5000, // Timeout after 5 seconds
-      enableReadyCheck: false, // Skip ready check to speed up connection
+      maxRetriesPerRequest: 3,
+      connectTimeout: 10000, // 10 seconds
+      enableReadyCheck: true,
+      tls: {
+        rejectUnauthorized: false, // Required for Upstash
+      },
       retryStrategy: (times) => {
-        // Only retry once with a short delay
-        if (times > 1) {
-          console.log(
-            "Giving up on Redis connection, using memory storage instead"
-          );
+        if (times > 3) {
+          console.log("Redis connection failed, using memory storage instead");
           useRedisClient = false;
           isConnecting = false;
-          return null; // Stop retrying
+          return null;
         }
-        return 500; // Retry after 500ms
+        return Math.min(times * 200, 1000); // Exponential backoff
       },
     });
 
@@ -178,14 +188,23 @@ export async function getProviderToken(
 ): Promise<string | null> {
   const key = provider === "printful" ? PRINTFUL_TOKEN_KEY : WEBFLOW_TOKEN_KEY;
 
-  // Try Redis first if available
+  // Check memory cache first
+  const cached = memoryCache[key];
+  if (cached && cached.expires > Date.now()) {
+    return cached.value;
+  }
+
+  // Try Redis
   const client = getRedisClient();
   if (useRedisClient && client) {
     try {
       const token = await client.get(key);
       if (token) {
         // Update memory cache
-        memoryTokenStore[key] = token;
+        memoryCache[key] = {
+          value: token,
+          expires: Date.now() + CACHE_TTL,
+        };
         return token;
       }
     } catch (error) {
@@ -193,8 +212,33 @@ export async function getProviderToken(
     }
   }
 
-  // Fall back to memory
   return memoryTokenStore[key] || null;
+}
+
+export async function getProviderTokens(): Promise<{
+  printful: string | null;
+  webflow: string | null;
+}> {
+  const client = getRedisClient();
+  if (useRedisClient && client) {
+    try {
+      const [printfulToken, webflowToken] = await client.mget([
+        PRINTFUL_TOKEN_KEY,
+        WEBFLOW_TOKEN_KEY,
+      ]);
+      return {
+        printful: printfulToken,
+        webflow: webflowToken,
+      };
+    } catch (error) {
+      console.error(`Redis error (fallback to memory): ${error}`);
+    }
+  }
+
+  return {
+    printful: memoryTokenStore[PRINTFUL_TOKEN_KEY] || null,
+    webflow: memoryTokenStore[WEBFLOW_TOKEN_KEY] || null,
+  };
 }
 
 const redisUtils = {
@@ -202,6 +246,7 @@ const redisUtils = {
   getToken,
   storeProviderToken,
   getProviderToken,
+  getProviderTokens,
 };
 
 export default redisUtils;

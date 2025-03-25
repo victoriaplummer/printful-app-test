@@ -3,7 +3,7 @@
 import { useSession, signIn } from "next-auth/react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { authStorage } from "../../lib/storage";
+import { disconnectProvider } from "../actions/auth";
 
 export default function AccountPage() {
   const { data: session, status, update } = useSession();
@@ -31,7 +31,7 @@ export default function AccountPage() {
 
   const handleDisconnect = async (provider: "printful" | "webflow") => {
     if (confirm(`Are you sure you want to disconnect from ${provider}?`)) {
-      authStorage.clearAuth(provider);
+      await disconnectProvider(provider);
       update();
     }
   };
