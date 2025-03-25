@@ -29,14 +29,15 @@ export async function POST(request: Request) {
 
     // Get all unfulfilled orders
     const webflowOrders = await webflow.orders.list(siteId, { limit: 100 });
-    const unfulfilledOrders = webflowOrders.orders.filter(
-      (order) =>
-        !order.fulfilledOn &&
-        order.status !== "refunded" &&
-        order.status !== "disputed"
-    );
+    const unfulfilledOrders =
+      webflowOrders?.orders?.filter(
+        (order) =>
+          !order.fulfilledOn &&
+          order.status !== "refunded" &&
+          order.status !== "disputed"
+      ) ?? [];
 
-    if (unfulfilledOrders.length === 0) {
+    if (unfulfilledOrders?.length === 0) {
       return NextResponse.json({
         message: "No unfulfilled orders found",
         success: true,
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
 
               // Extract variant_id from SKU if needed
               // Assuming SKU follows a pattern like "PF-12345" where 12345 is the Printful variant_id
-              const skuMatch = item.variantSKU.match(/PF-(\d+)/);
+              const skuMatch = item.variantSku.match(/PF-(\d+)/);
 
               if (skuMatch && skuMatch[1]) {
                 const variant_id = parseInt(skuMatch[1]);
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
                 // If we couldn't extract a variant ID from the SKU,
                 // use the raw SKU and let Printful try to match it
                 return {
-                  sku: item.variantSKU,
+                  sku: item?.variantSku,
                   quantity: item.count,
                 };
               }
@@ -127,9 +128,13 @@ export async function POST(request: Request) {
             );
           }
 
+          if (!order.orderId) {
+            throw new Error("Order ID is missing");
+          }
+
           // Update order fulfillment status in Webflow
           await webflow.orders.updateFulfill(siteId, order.orderId, {
-            fulfillmentStatus: "fulfilled",
+            sendOrderFulfilledEmail: false,
           });
 
           return {

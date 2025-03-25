@@ -39,41 +39,37 @@ export async function POST(request: Request) {
     const siteId = sites.sites[0].id;
 
     // Get order details from Webflow
-    const webflowOrder = await webflow.ecommerce.getOrder({
-      siteId,
-      orderId,
-    });
+    const webflowOrder = await webflow.orders.get(siteId, orderId);
 
     // Format order for Printful
     const printfulOrder = {
-      external_id: webflowOrder.order.orderNumber,
+      external_id: webflowOrder.orderId,
       shipping: "STANDARD",
       recipient: {
-        name: `${webflowOrder.order.customer.firstName} ${webflowOrder.order.customer.lastName}`,
-        email: webflowOrder.order.customer.email,
-        address1: webflowOrder.order.shippingAddress.line1,
-        address2: webflowOrder.order.shippingAddress.line2 || "",
-        city: webflowOrder.order.shippingAddress.city,
-        state_code: webflowOrder.order.shippingAddress.state,
-        country_code: webflowOrder.order.shippingAddress.country,
-        zip: webflowOrder.order.shippingAddress.postalCode,
-        phone: webflowOrder.order.customer.phone || "",
+        name: `${webflowOrder.customerInfo?.fullName}`,
+        email: webflowOrder.customerInfo?.email,
+        address1: webflowOrder.shippingAddress?.line1,
+        address2: webflowOrder.shippingAddress?.line2 || "",
+        city: webflowOrder.shippingAddress?.city,
+        state_code: webflowOrder.shippingAddress?.state,
+        country_code: webflowOrder.shippingAddress?.country,
+        zip: webflowOrder.shippingAddress?.postalCode,
       },
-      items: webflowOrder.order.items.map((item) => {
+      items: webflowOrder.purchasedItems?.map((item) => {
         // Extract variant_id from SKU if needed
         // Assuming SKU follows a pattern like "PF-12345" where 12345 is the Printful variant_id
-        const skuMatch = item.sku.match(/PF-(\d+)/);
+        const skuMatch = item.variantSku?.match(/PF-(\d+)/);
         const variant_id = skuMatch ? parseInt(skuMatch[1]) : null;
 
         if (!variant_id) {
           throw new Error(
-            `Could not extract Printful variant ID from SKU: ${item.sku}`
+            `Could not extract Printful variant ID from SKU: ${item.variantSku}`
           );
         }
 
         return {
           variant_id,
-          quantity: item.quantity,
+          quantity: item.count,
         };
       }),
     };
@@ -98,15 +94,8 @@ export async function POST(request: Request) {
 
     // Update order fulfillment status in Webflow if needed
     try {
-      await webflow.ecommerce.fulfillOrder({
-        siteId,
-        orderId,
-        requestBody: {
-          tracking: {
-            carrier: "Printful",
-            number: `PF${printfulData.result.id}`, // Use Printful order ID as tracking number
-          },
-        },
+      await webflow.orders.updateFulfill(siteId, orderId, {
+        sendOrderFulfilledEmail: false,
       });
     } catch (webflowError) {
       console.error("Error updating Webflow order status:", webflowError);

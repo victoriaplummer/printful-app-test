@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import Image from "next/image";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ErrorDisplay from "@/components/ui/ErrorDisplay";
 
@@ -9,6 +10,15 @@ interface OrderDetailsProps {
   orderId: string;
   siteId: string;
   onOrderFulfilled: () => void;
+}
+
+interface PurchasedItem {
+  id: string;
+  name: string;
+  variantName: string;
+  price: number;
+  quantity: number;
+  thumbnailUrl?: string;
 }
 
 export default function OrderDetails({
@@ -155,13 +165,14 @@ export default function OrderDetails({
         <div>
           <h3 className="font-semibold mb-2">Order Items</h3>
           <div className="space-y-4">
-            {order.orderItems.map((item) => (
+            {order.purchasedItems?.map((item: PurchasedItem) => (
               <div key={item.id} className="flex items-start gap-4">
                 {item.thumbnailUrl && (
                   <div className="w-16 h-16 relative">
-                    <img
+                    <Image
                       src={item.thumbnailUrl}
                       alt={item.name}
+                      fill
                       className="object-cover rounded"
                     />
                   </div>

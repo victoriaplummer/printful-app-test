@@ -36,8 +36,10 @@ export async function GET(request: Request) {
       id: order.orderId,
       orderNumber: order.orderId,
       createdOn: order.acceptedOn,
-      customerName: order.customerInfo.fullName,
-      total: order.customerPaid ? order.customerPaid.value / 100 : 0, // Convert cents to dollars
+      customerName: order.customerInfo?.fullName,
+      total: order.customerPaid?.value
+        ? Number(order.customerPaid.value) / 100
+        : 0,
       status: order.status,
       fulfillmentStatus: order.fulfilledOn ? "fulfilled" : "unfulfilled",
     }));

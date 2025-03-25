@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WebflowSiteSelector from "@/components/WebflowSiteSelector";
@@ -16,7 +15,6 @@ interface WebflowSettingsProps {
 
 export default function WebflowSettings({
   onSettingsChange,
-  initialSettings,
 }: WebflowSettingsProps) {
   const { data: session } = useSession();
   const { settings, updateSettings } = useWebflowSettings();
@@ -34,20 +32,6 @@ export default function WebflowSettings({
     },
     enabled: !!session?.webflowAccessToken,
   });
-
-  // Apply initial settings if provided
-  useEffect(() => {
-    if (initialSettings) {
-      updateSettings({
-        ...settings,
-        ...initialSettings,
-        syncOptions: {
-          ...settings.syncOptions,
-          ...initialSettings.syncOptions,
-        },
-      });
-    }
-  }, [initialSettings]);
 
   const handleSiteChange = (siteId: string) => {
     const updatedSettings = {

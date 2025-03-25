@@ -1,3 +1,4 @@
+/* stylelint-disable */
 @import "tailwindcss";
 @plugin "daisyui" {
   themes: silk --default, dim --prefersdark;
@@ -5,6 +6,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* DaisyUI theme configuration */
+:root {
+  --theme: silk;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --theme: dim;
+  }
+}
 
 /* Let daisyUI handle theming without custom overrides */
 

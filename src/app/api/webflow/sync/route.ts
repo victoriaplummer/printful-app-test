@@ -7,20 +7,20 @@ interface WebflowProductResponse {
   id: string;
   fieldData: {
     name: string;
-    [key: string]: any;
+    [key: string]: string | number | boolean | object | undefined;
   };
   sku?: {
     id: string;
     fieldData: {
       sku: string;
-      [key: string]: any;
+      [key: string]: string | number | boolean | object | undefined;
     };
   };
   skus?: Array<{
     id: string;
     fieldData: {
       sku: string;
-      [key: string]: any;
+      [key: string]: string | number | boolean | object | undefined;
     };
   }>;
 }
@@ -41,10 +41,10 @@ interface PrintfulSyncVariant {
   files: Array<{
     thumbnail_url: string;
     preview_url: string;
-    [key: string]: any;
+    [key: string]: string | undefined;
   }>;
   availability_status: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | object | undefined;
 }
 
 // Add debug logs to findExistingProduct
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
     console.log("Product:", printfulProduct.name);
     console.log(
       "Variants to check:",
-      printfulVariants.map((v) => v.variant_id)
+      printfulVariants.map((v: PrintfulSyncVariant) => v.variant_id)
     );
 
     // 2. Initialize Webflow client
@@ -331,22 +331,24 @@ export async function POST(request: Request) {
           printfulVariants.length - 1
         } additional SKUs for new product...`
       );
-      const remainingSkus = printfulVariants.slice(1).map((variant) => ({
-        fieldData: {
-          name: `${printfulProduct.name} - ${variant.color} / ${variant.size}`,
-          slug: `${printfulProduct.name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")}-${variant.variant_id}`,
-          sku: variant.variant_id.toString(),
-          price: {
-            value: Math.round(parseFloat(variant.retail_price) * 100),
-            unit: "USD",
+      const remainingSkus = printfulVariants
+        .slice(1)
+        .map((variant: PrintfulSyncVariant) => ({
+          fieldData: {
+            name: `${printfulProduct.name} - ${variant.color} / ${variant.size}`,
+            slug: `${printfulProduct.name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")}-${variant.variant_id}`,
+            sku: variant.variant_id.toString(),
+            price: {
+              value: Math.round(parseFloat(variant.retail_price) * 100),
+              unit: "USD",
+            },
+            ["sku-values"]: generateSkuValues(variant),
+            "main-image":
+              variant.product.image || variant.files?.[0]?.thumbnail_url,
           },
-          ["sku-values"]: generateSkuValues(variant),
-          "main-image":
-            variant.product.image || variant.files?.[0]?.thumbnail_url,
-        },
-      }));
+        }));
 
       const skuResponse = await fetch(
         `https://api.webflow.com/v2/sites/${siteId}/products/${result.product.id}/skus`,

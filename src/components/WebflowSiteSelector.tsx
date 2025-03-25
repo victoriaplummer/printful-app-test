@@ -9,15 +9,16 @@ interface WebflowSite {
 }
 
 interface WebflowSiteSelectorProps {
+  sites: Array<{ _id: string; displayName: string }>;
+  selectedSiteId: string;
   onSiteSelect: (siteId: string) => void;
-  selectedSiteId?: string | null;
 }
 
 export default function WebflowSiteSelector({
-  onSiteSelect,
   selectedSiteId,
+  onSiteSelect,
 }: WebflowSiteSelectorProps) {
-  const [sites, setSites] = useState<WebflowSite[]>([]);
+  const [webflowSites, setWebflowSites] = useState<WebflowSite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +36,7 @@ export default function WebflowSiteSelector({
         }
 
         const data = await response.json();
-        setSites(data.sites || []);
+        setWebflowSites(data.sites || []);
 
         // Only auto-select if there's exactly one site and no site is already selected
         if (data.sites?.length === 1 && !selectedSiteId) {
@@ -89,7 +90,7 @@ export default function WebflowSiteSelector({
     );
   }
 
-  if (sites.length === 0) {
+  if (webflowSites.length === 0) {
     return (
       <div className="alert alert-warning">
         <svg
@@ -124,9 +125,9 @@ export default function WebflowSiteSelector({
         onChange={handleSiteChange}
       >
         <option value="" disabled>
-          {sites.length > 1 ? "Select a Webflow site" : ""}
+          {webflowSites.length > 1 ? "Select a Webflow site" : ""}
         </option>
-        {sites.map((site) => (
+        {webflowSites.map((site) => (
           <option key={site.id} value={site.id} className="text-base-content">
             {site.name}
           </option>

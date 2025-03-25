@@ -1,6 +1,12 @@
 "use client";
 
-type SyncStatusType = "not_synced" | "pending" | "synced" | "error" | "syncing";
+export type SyncStatusType =
+  | "synced"
+  | "not_synced"
+  | "warning"
+  | "stale"
+  | "error"
+  | "syncing";
 
 interface SyncStatusProps {
   status: SyncStatusType;

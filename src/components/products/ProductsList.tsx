@@ -2,7 +2,15 @@ import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import SyncStatus from "@/components/SyncStatus";
 import Image from "next/image";
-import WebflowSettingsData from "@/components/webflow/WebflowSettings";
+
+interface WebflowSettings {
+  siteId: string;
+  syncOptions: {
+    autoDraft: boolean;
+    includeImages: boolean;
+    skipExisting: boolean;
+  };
+}
 
 interface PrintfulVariant {
   id: string;
@@ -35,7 +43,7 @@ interface ProductsListProps {
   searchQuery: string;
   statusFilter: string;
   selectedSiteId: string;
-  webflowSettings: WebflowSettingsData;
+  webflowSettings: WebflowSettings;
 }
 
 // API function for syncing products
@@ -44,7 +52,7 @@ const syncProduct = async ({
   settings,
 }: {
   productId: string;
-  settings: WebflowSettingsData;
+  settings: WebflowSettings;
 }) => {
   if (!settings.siteId) {
     throw new Error("No Webflow site selected");
@@ -262,23 +270,26 @@ export const ProductsList: React.FC<ProductsListProps> = ({
       console.log("Sync completed successfully:", data);
 
       // Optimistically update the cache
-      queryClient.setQueriesData({ queryKey: ["products"] }, (oldData: any) => {
-        if (!Array.isArray(oldData)) return oldData;
+      queryClient.setQueriesData(
+        { queryKey: ["products"] },
+        (oldData: Product[] | unknown) => {
+          if (!Array.isArray(oldData)) return oldData;
 
-        return oldData.map((product: Product) => {
-          if (product.id === variables.productId) {
-            return {
-              ...product,
-              variants: product.variants.map((variant) => ({
-                ...variant,
-                lastSynced: new Date().toISOString(),
-                sync_status: "synced",
-              })),
-            };
-          }
-          return product;
-        });
-      });
+          return oldData.map((product: Product) => {
+            if (product.id === variables.productId) {
+              return {
+                ...product,
+                variants: product.variants.map((variant) => ({
+                  ...variant,
+                  lastSynced: new Date().toISOString(),
+                  sync_status: "synced",
+                })),
+              };
+            }
+            return product;
+          });
+        }
+      );
 
       // Instead of invalidating, we'll refetch in the background
       queryClient.invalidateQueries({
@@ -408,7 +419,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({
     queryClient.setDefaultOptions({
       queries: {
         staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
-        cacheTime: 1000 * 60 * 30, // Keep unused data in cache for 30 minutes
+        gcTime: 1000 * 60 * 30, // Keep unused data in cache for 30 minutes
       },
     });
   }, [queryClient]);
