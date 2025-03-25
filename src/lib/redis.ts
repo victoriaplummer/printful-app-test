@@ -155,4 +155,11 @@ export async function getProviderToken(
   return memoryTokenStore[key] || null;
 }
 
-export default { storeToken, getToken, storeProviderToken, getProviderToken };
+const redisUtils = {
+  storeToken,
+  getToken,
+  storeProviderToken,
+  getProviderToken,
+};
+
+export default redisUtils;
