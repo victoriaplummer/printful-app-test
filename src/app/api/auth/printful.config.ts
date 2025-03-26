@@ -38,9 +38,10 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
     url: "https://www.printful.com/oauth/authorize",
     params: {
       client_id: process.env.PRINTFUL_CLIENT_ID,
-      redirect_url: `${
-        process.env.NODE_ENV === "production" ? "https://" : ""
-      }${process.env.NEXTAUTH_URL}/api/auth/callback/printful`,
+      redirect_url:
+        process.env.NODE_ENV === "production"
+          ? "https://weblfow-printful-sync-utility.vercel.app/api/auth/callback/printful"
+          : `${process.env.NEXTAUTH_URL}/api/auth/callback/printful`,
       response_type: "code",
     },
   },
@@ -48,9 +49,10 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
     url: "https://www.printful.com/oauth/token",
     async request(context) {
       const { provider, params } = context;
-      const redirect_url = `${
-        process.env.NODE_ENV === "production" ? "https://" : ""
-      }${process.env.NEXTAUTH_URL}/api/auth/callback/printful`;
+      const redirect_url =
+        process.env.NODE_ENV === "production"
+          ? "https://weblfow-printful-sync-utility.vercel.app/api/auth/callback/printful"
+          : `${process.env.NEXTAUTH_URL}/api/auth/callback/printful`;
 
       const response = await fetch("https://www.printful.com/oauth/token", {
         method: "POST",
