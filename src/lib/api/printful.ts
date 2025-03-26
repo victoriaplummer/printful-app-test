@@ -196,3 +196,81 @@ export const syncProductToWebflow = async (
     throw error;
   }
 };
+
+export interface PrintfulProfile {
+  sub: string; // Unique identifier for the user/store
+  name: string; // Store name
+  // Note: Printful doesn't actually provide a sub/name in their API
+  // We're creating these values ourselves in the userinfo.request
+}
+
+// You might also want to add other Printful-related interfaces here
+export interface PrintfulTokenResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  token_type?: string;
+  result?: {
+    access_token?: string;
+    refresh_token?: string;
+  };
+}
+
+export async function getPrintfulProducts(accessToken: string) {
+  const response = await fetch("https://api.printful.com/store/products", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch Printful products: ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+  return data.result || [];
+}
+
+export async function getPrintfulProduct(
+  productId: string,
+  accessToken: string
+) {
+  const response = await fetch(
+    `https://api.printful.com/store/products/${productId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Printful product: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.result;
+}
+
+export async function getPrintfulVariant(
+  variantId: string,
+  accessToken: string
+) {
+  const response = await fetch(
+    `https://api.printful.com/store/variants/${variantId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch variant details: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.result;
+}

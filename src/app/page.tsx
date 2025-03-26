@@ -22,7 +22,7 @@ export default function Home() {
       <main className="flex-1 p-8">
         <div className="w-full max-w-6xl mx-auto">
           <h1 className="text-4xl font-bold mb-8 text-center">
-            Printful-Webflow Integration
+            Printful-Webflow Sync Utility
           </h1>
 
           <WelcomeSection />

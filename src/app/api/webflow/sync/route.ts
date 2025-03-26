@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/auth.config";
 import { WebflowClient } from "webflow-api";
+import { getPrintfulProduct, getPrintfulVariant } from "@/lib/api/printful";
 
 interface WebflowProductResponse {
   id: string;
@@ -47,7 +48,18 @@ interface PrintfulSyncVariant {
   [key: string]: string | number | boolean | object | undefined;
 }
 
-// Add debug logs to findExistingProduct
+interface PrintfulVariantDetails {
+  name: string;
+  retail_price: string;
+  files?: Array<{
+    type: string;
+    preview_url: string;
+  }>;
+  product: {
+    image: string;
+  };
+}
+
 async function findExistingProduct(
   webflow: WebflowClient,
   siteId: string,
@@ -117,6 +129,7 @@ function extractSkuProperties(variants: PrintfulSyncVariant[]) {
   allOptions.set("Size", new Set());
 
   variants.forEach((variant) => {
+    console.log("Variant:", variant);
     allOptions.get("Color")?.add(variant.color || "Default");
     allOptions.get("Size")?.add(variant.size || "One Size");
   });
@@ -161,32 +174,81 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Get product details from Printful
-    const printfulResponse = await fetch(
-      `https://api.printful.com/store/products/${productId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${session.printfulAccessToken}`,
-        },
-      }
+    // Use the shared function to get product details
+    const printfulProduct = await getPrintfulProduct(
+      productId,
+      session.printfulAccessToken
     );
 
-    if (!printfulResponse.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch Printful product" },
-        { status: printfulResponse.status }
-      );
+    if (!printfulProduct || !printfulProduct.sync_variants) {
+      throw new Error("Invalid product details response");
     }
 
-    const printfulData = await printfulResponse.json();
-    const printfulProduct = printfulData.result.sync_product;
-    const printfulVariants = printfulData.result.sync_variants;
+    // Fetch variant details
+    const variantsWithDetails = await Promise.all(
+      printfulProduct.sync_variants.map(
+        async (variant: PrintfulSyncVariant) => {
+          try {
+            const variantDetails = (await getPrintfulVariant(
+              variant.id.toString(),
+              session.printfulAccessToken as string
+            )) as PrintfulVariantDetails;
+
+            return {
+              id: variant.id.toString(),
+              name: variantDetails.name,
+              variant_id: variant.id.toString(),
+              product_id: productId,
+              retail_price: variantDetails.retail_price || "0.00",
+              sku: variant.id.toString(),
+              color: variant.color,
+              size: variant.size,
+              thumbnail_url:
+                variantDetails.files?.find((file) => file.type === "preview")
+                  ?.preview_url ||
+                variantDetails.product.image ||
+                "",
+              preview_url:
+                variantDetails.files?.find((file) => file.type === "preview")
+                  ?.preview_url || null,
+            };
+          } catch (error) {
+            console.error(
+              `Error fetching variant details for ${variant.id}:`,
+              error
+            );
+            // Return basic variant info on error
+            return {
+              id: variant.id.toString(),
+              name: variant.name,
+              variant_id: variant.variant_id.toString(),
+              product_id: productId,
+              retail_price: variant.retail_price || "0.00",
+              sku: variant.id.toString(),
+              thumbnail_url: "",
+              preview_url: null,
+              color: variant.color,
+              size: variant.size,
+            };
+          }
+        }
+      )
+    );
+
+    const detailedProduct = {
+      id: productId,
+      name: printfulProduct.sync_product.name,
+      thumbnail_url: printfulProduct.thumbnail_url || "",
+      variants: variantsWithDetails,
+    };
+
+    console.log("Printful Product:", detailedProduct);
 
     console.log("\n=== Starting Sync Check ===");
-    console.log("Product:", printfulProduct.name);
+    console.log("Product:", detailedProduct.name);
     console.log(
       "Variants to check:",
-      printfulVariants.map((v: PrintfulSyncVariant) => v.variant_id)
+      detailedProduct.variants.map((v: PrintfulSyncVariant) => v.variant_id)
     );
 
     // 2. Initialize Webflow client
@@ -198,7 +260,7 @@ export async function POST(request: Request) {
     const existingProduct = await findExistingProduct(
       webflow,
       siteId,
-      printfulVariants[0].variant_id
+      detailedProduct.variants[0].variant_id
     );
 
     // Add a pause to inspect the logs
@@ -217,7 +279,7 @@ export async function POST(request: Request) {
     if (existingProduct) {
       // Update existing product's SKUs
       const skusToAdd = [];
-      for (const variant of printfulVariants) {
+      for (const variant of detailedProduct.variants) {
         const exists = await findExistingProduct(
           webflow,
           siteId,
@@ -227,8 +289,8 @@ export async function POST(request: Request) {
           console.log(`Adding variant ${variant.variant_id} to skusToAdd`);
           skusToAdd.push({
             fieldData: {
-              name: `${printfulProduct.name} - ${variant.name}`,
-              slug: `${printfulProduct.name
+              name: `${detailedProduct.name} - ${variant.name}`,
+              slug: `${detailedProduct.name
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, "-")}-${variant.name
                 .toLowerCase()
@@ -249,7 +311,7 @@ export async function POST(request: Request) {
                 unit: "USD",
               },
               "main-image":
-                variant.thumbnail_url || printfulProduct.thumbnail_url,
+                variant.thumbnail_url || detailedProduct.thumbnail_url,
             },
           });
         }
@@ -294,29 +356,31 @@ export async function POST(request: Request) {
       publishStatus: "live" as const,
       product: {
         fieldData: {
-          name: printfulProduct.name,
-          slug: printfulProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-          ["sku-properties"]: extractSkuProperties(printfulVariants),
+          name: detailedProduct.name,
+          slug: detailedProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          ["sku-properties"]: extractSkuProperties(detailedProduct.variants),
           lastsynced: new Date().toISOString(),
         },
       },
       sku: {
         fieldData: {
-          name: `${printfulProduct.name} - ${printfulVariants[0].color} / ${printfulVariants[0].size}`,
-          slug: `${printfulProduct.name
+          name: `${detailedProduct.name} - ${detailedProduct.variants[0].color} / ${detailedProduct.variants[0].size}`,
+          slug: `${detailedProduct.name
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")}-${printfulVariants[0].variant_id}`,
-          sku: printfulVariants[0].variant_id.toString(),
+            .replace(/[^a-z0-9]+/g, "-")}-${
+            detailedProduct.variants[0].variant_id
+          }`,
+          sku: detailedProduct.variants[0].id.toString(),
           price: {
             value: Math.round(
-              parseFloat(printfulVariants[0].retail_price) * 100
+              parseFloat(detailedProduct.variants[0].retail_price) * 100
             ),
             unit: "USD",
           },
-          ["sku-values"]: generateSkuValues(printfulVariants[0]),
+          ["sku-values"]: generateSkuValues(detailedProduct.variants[0]),
           "main-image":
-            printfulVariants[0].product.image ||
-            printfulVariants[0].files?.[0]?.thumbnail_url,
+            detailedProduct.variants[0].preview_url ||
+            detailedProduct.variants[0].thumbnail_url,
           ["sync-variant-id"]: "TEST",
         },
       },
@@ -325,28 +389,27 @@ export async function POST(request: Request) {
     const result = await webflow.products.create(siteId, productData);
 
     // 5. Add remaining variants as SKUs
-    if (printfulVariants.length > 1 && result.product?.id) {
+    if (detailedProduct.variants.length > 1 && result.product?.id) {
       console.log(
         `Creating ${
-          printfulVariants.length - 1
+          detailedProduct.variants.length - 1
         } additional SKUs for new product...`
       );
-      const remainingSkus = printfulVariants
+      const remainingSkus = detailedProduct.variants
         .slice(1)
         .map((variant: PrintfulSyncVariant) => ({
           fieldData: {
-            name: `${printfulProduct.name} - ${variant.color} / ${variant.size}`,
-            slug: `${printfulProduct.name
+            name: `${detailedProduct.name} - ${variant.color} / ${variant.size}`,
+            slug: `${detailedProduct.name
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, "-")}-${variant.variant_id}`,
-            sku: variant.variant_id.toString(),
+            sku: variant.id.toString(),
             price: {
               value: Math.round(parseFloat(variant.retail_price) * 100),
               unit: "USD",
             },
             ["sku-values"]: generateSkuValues(variant),
-            "main-image":
-              variant.product.image || variant.files?.[0]?.thumbnail_url,
+            "main-image": variant.preview_url || variant.thumbnail_url,
           },
         }));
 
@@ -378,7 +441,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       message: "Product created successfully",
       productId: result.product?.id,
-      variantsAdded: printfulVariants.length - 1,
+      variantsAdded: detailedProduct.variants.length - 1,
     });
   } catch (error) {
     console.error("Error in sync process:", error);

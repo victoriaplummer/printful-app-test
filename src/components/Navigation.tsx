@@ -63,7 +63,7 @@ export default function Navigation() {
           </ul>
         </div>
         <Link href="/" className="btn btn-ghost text-xl">
-          Printful App
+          Printful-Webflow Sync
         </Link>
       </div>
 

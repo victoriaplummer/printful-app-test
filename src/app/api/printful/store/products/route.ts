@@ -2,9 +2,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/auth.config";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
+import * as Webflow from "webflow-api/api";
 import { getProviderToken } from "../../../auth/printful.config";
+import {
+  getPrintfulProducts,
+  getPrintfulProduct,
+  getPrintfulVariant,
+} from "@/lib/api/printful";
 
 // Define interfaces for type safety
+interface CustomFieldData {
+  sku?: string;
+  lastSynced?: string;
+  [key: string]: string | number | boolean | undefined; // More specific types for custom fields
+}
+
 interface PrintfulVariant {
   id: string | number;
   name: string;
@@ -15,24 +27,21 @@ interface PrintfulVariant {
   sync_variant_id?: string;
 }
 
-interface WebflowProduct {
-  id?: string;
-  fieldData?: {
-    sync_variant_id?: string;
-    lastSynced?: string;
-    [key: string]: string | number | boolean | object | undefined;
-  };
-  skus?: Array<{
-    id?: string;
-    fieldData?: {
-      sync_variant_id?: string;
-      lastSynced?: string;
-      [key: string]: string | number | boolean | object | undefined;
-    };
+// Update the interface to match Printful's response structure
+interface PrintfulVariantDetails {
+  name: string;
+  retail_price: string;
+  files?: Array<{
+    type: string;
+    preview_url: string;
   }>;
+  product: {
+    image: string;
+  };
+  availability_status: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -55,6 +64,17 @@ export async function GET() {
     session.printfulAccessToken = token;
   }
 
+  // Get siteId from URL params
+  const { searchParams } = new URL(request.url);
+  const siteId = searchParams.get("siteId");
+
+  if (!siteId) {
+    return NextResponse.json(
+      { error: "Webflow site ID is required" },
+      { status: 400 }
+    );
+  }
+
   // Debug: Log session details
   // console.log("Printful Store Products API - Session:", {
   //   hasSession: !!session,
@@ -65,36 +85,17 @@ export async function GET() {
   //   sessionKeys: session ? Object.keys(session) : [],
   // });
 
+  // Add type assertion for the token since we've already checked it exists
+  const accessToken = session.printfulAccessToken as string;
+
   try {
     console.log(
       "Fetching Printful products with token:",
-      session.printfulAccessToken.substring(0, 10) + "..."
+      accessToken.substring(0, 10) + "..."
     );
 
-    // Step 1: Fetch the list of products
-    const productsResponse = await fetch(
-      "https://api.printful.com/store/products",
-      {
-        headers: {
-          Authorization: `Bearer ${session.printfulAccessToken}`,
-        },
-      }
-    );
-
-    if (!productsResponse.ok) {
-      console.error(
-        "Printful API error:",
-        productsResponse.status,
-        productsResponse.statusText
-      );
-      return NextResponse.json(
-        { error: "Failed to fetch products from Printful" },
-        { status: productsResponse.status }
-      );
-    }
-
-    const productsData = await productsResponse.json();
-    const productsList = productsData.result || [];
+    // Step 1: Fetch all products from Printful
+    const productsList = await getPrintfulProducts(accessToken);
 
     if (!Array.isArray(productsList) || productsList.length === 0) {
       console.log("No products found in Printful store");
@@ -103,132 +104,120 @@ export async function GET() {
 
     console.log(`Found ${productsList.length} products, fetching details...`);
 
-    // Step 2: If we have a Webflow token, try to fetch the lastSynced info
-    let webflowProducts: WebflowProduct[] = [];
-    if (session.webflowAccessToken) {
-      try {
-        // In a server component, we don't have access to localStorage
-        // Instead, we'll query Webflow for all available sites
-        let defaultSiteId: string | null = null;
-
-        // Fetch the first site available
-        const webflowClient = new WebflowClient({
-          accessToken: session.webflowAccessToken as string,
-        });
-
-        // Get the sites list
-        const sitesResponse = await webflowClient.sites.list();
-        if (sitesResponse.sites && sitesResponse.sites.length > 0) {
-          defaultSiteId = sitesResponse.sites[0].id;
-        }
-
-        if (defaultSiteId) {
-          // Fetch products from Webflow
-          const webflowResponse = await webflowClient.products.list(
-            defaultSiteId
-          );
-          webflowProducts = (webflowResponse.items as WebflowProduct[]) || [];
-
-          console.log(`Found ${webflowProducts.length} products in Webflow`);
-        }
-      } catch (error) {
-        console.error("Error fetching Webflow products:", error);
-        // Non-critical error, continue without Webflow data
-      }
-    }
-
-    // Create lookup map for Webflow products based on sync_variant_id
-    const webflowProductsMap = new Map<string, { lastSynced: string }>();
-    webflowProducts.forEach((product) => {
-      // Check product's field data for sync_variant_id
-      if (product.fieldData?.sync_variant_id && product.fieldData.lastSynced) {
-        webflowProductsMap.set(product.fieldData.sync_variant_id, {
-          lastSynced: product.fieldData.lastSynced,
-        });
-      }
-    });
-
-    // Step 3: Fetch detailed information for each product in parallel
+    // Step 2: Fetch detailed information for each product and its variants
     const productsWithDetails = await Promise.all(
       productsList.map(async (product) => {
         try {
-          const detailResponse = await fetch(
-            `https://api.printful.com/store/products/${product.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${session.printfulAccessToken}`,
-              },
-            }
+          const detailData = await getPrintfulProduct(
+            product.id.toString(),
+            accessToken // Use the asserted token
           );
 
-          if (!detailResponse.ok) {
-            console.warn(`Failed to fetch details for product ${product.id}`);
-            // Return a product with placeholder variants
-            return {
-              id: product.id.toString(),
-              name: product.name,
-              thumbnail_url: product.thumbnail_url,
-              variants: Array(product.variants || 0)
-                .fill(null)
-                .map((_, index) => ({
-                  id: `temp-${product.id}-${index}`,
-                  name: `Variant ${index + 1}`,
-                  variant_id: `temp-variant-${index}`,
-                  product_id: product.id.toString(),
-                  retail_price: "0.00",
-                  sync_status: "not_synced",
-                })),
-            };
+          if (!detailData || !detailData.sync_variants) {
+            throw new Error("Invalid product details response");
           }
 
-          const detailData = await detailResponse.json();
+          // Step 3: Fetch variant details
+          const variantsWithDetails = await Promise.all(
+            detailData.sync_variants.map(async (variant: PrintfulVariant) => {
+              try {
+                const variantDetails = (await getPrintfulVariant(
+                  variant.id.toString(),
+                  accessToken // Use the asserted token
+                )) as PrintfulVariantDetails;
 
-          // Map the product detail to the expected format
-          return {
-            id: product.id.toString(),
-            name: product.name,
-            thumbnail_url: product.thumbnail_url,
-            // Use sync_variants from the detail data, or create placeholders if missing
-            variants: (detailData.result?.sync_variants || []).map(
-              (variant: PrintfulVariant) => {
-                // Match with Webflow products if sync_variant_id exists
-                const webflowData = variant.sync_variant_id
-                  ? webflowProductsMap.get(variant.sync_variant_id)
-                  : undefined;
-
+                // Create consistent variant object
                 return {
                   id: variant.id.toString(),
-                  name: variant.name,
-                  variant_id: variant.variant_id.toString(),
+                  name: variantDetails.name,
+                  variant_id: variant.id.toString(),
                   product_id: product.id.toString(),
-                  retail_price: variant.retail_price || "0.00",
-                  sync_status: webflowData ? "synced" : "not_synced",
-                  lastSynced: webflowData?.lastSynced || null,
-                  sku: variant.sku || "",
+                  retail_price: variantDetails.retail_price || "0.00",
+                  sku: variant.id.toString(),
+                  thumbnail_url:
+                    variantDetails.files?.find(
+                      (file) => file.type === "preview"
+                    )?.preview_url ||
+                    variantDetails.product.image ||
+                    "",
+                  preview_url:
+                    variantDetails.files?.find(
+                      (file) => file.type === "preview"
+                    )?.preview_url || null,
+                  availability_status: variantDetails.availability_status,
+                  sync_status: "not_synced" as const,
+                  lastSynced: null,
                 };
+              } catch (error) {
+                console.error(
+                  `Error fetching variant details for ${variant.id}:`,
+                  error
+                );
+                // Return fallback variant info
+                return createFallbackVariant(variant, product.id);
               }
-            ),
-          };
-        } catch (error) {
-          console.error(
-            `Error fetching details for product ${product.id}:`,
-            error
+            })
           );
-          // Return a product with placeholder variants on error
+
           return {
             id: product.id.toString(),
             name: product.name,
-            thumbnail_url: product.thumbnail_url,
-            variants: [],
+            thumbnail_url: product.thumbnail_url || "",
+            variants: variantsWithDetails,
           };
+        } catch (error) {
+          console.error(`Error processing product ${product.id}:`, error);
+          return createFallbackProduct(product);
         }
       })
     );
 
-    console.log(
-      `Successfully fetched details for ${productsWithDetails.length} products`
-    );
-    return NextResponse.json({ result: productsWithDetails });
+    // Step 4: Add Webflow sync status information
+    const webflowProductsMap = new Map();
+    if (session.webflowAccessToken && siteId) {
+      try {
+        const webflowClient = new WebflowClient({
+          accessToken: session.webflowAccessToken as string,
+        });
+
+        const webflowProducts = await webflowClient.products.list(siteId);
+        webflowProducts.items?.forEach((product: Webflow.ProductAndSkUs) => {
+          const customFields = product.product
+            ?.fieldData as unknown as CustomFieldData;
+          if (customFields?.sku) {
+            webflowProductsMap.set(customFields.sku, {
+              lastSynced: customFields.lastSynced,
+            });
+          }
+          product.skus?.forEach((sku: Webflow.Sku) => {
+            const customSkuFields = sku.fieldData as unknown as CustomFieldData;
+            if (customSkuFields?.sku) {
+              webflowProductsMap.set(customSkuFields.sku, {
+                lastSynced: customSkuFields.lastSynced,
+              });
+            }
+          });
+        });
+      } catch (error) {
+        console.error("Error fetching Webflow products:", error);
+      }
+    }
+
+    // Update sync status for all products
+    const productsWithSync = productsWithDetails.map((product) => ({
+      ...product,
+      variants: product.variants.map((variant) => {
+        const webflowData = webflowProductsMap.get(variant.sku);
+        return {
+          ...variant,
+          sync_status: webflowData ? "synced" : "not_synced",
+          lastSynced: webflowData?.lastSynced || null,
+        };
+      }),
+    }));
+
+    // Return all products, regardless of sync status
+    return NextResponse.json({ result: productsWithSync });
   } catch (error) {
     console.error("Error fetching Printful products:", error);
     return NextResponse.json(
@@ -236,4 +225,38 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+// Helper functions for consistent fallback objects
+function createFallbackVariant(
+  variant: PrintfulVariant,
+  productId: string | number
+) {
+  return {
+    id: variant.id.toString(),
+    name: variant.name,
+    variant_id: variant.variant_id.toString(),
+    product_id: productId.toString(),
+    retail_price: variant.retail_price || "0.00",
+    sku: variant.sku || `PF-${variant.variant_id}`,
+    thumbnail_url: "",
+    preview_url: null,
+    availability_status: "unknown",
+    sync_status: "not_synced" as const,
+    lastSynced: null,
+  };
+}
+
+function createFallbackProduct(product: {
+  id: string | number;
+  name: string;
+  thumbnail_url?: string;
+}) {
+  return {
+    id: product.id.toString(),
+    name: product.name,
+    thumbnail_url: product.thumbnail_url || "",
+    variants: [],
+    sync_status: "not_synced" as const,
+  };
 }

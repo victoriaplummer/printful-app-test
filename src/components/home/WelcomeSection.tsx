@@ -6,8 +6,8 @@ export default function WelcomeSection() {
         <div className="card-body">
           <h2 className="card-title">Welcome</h2>
           <p>
-            This integration allows you to synchronize your Printful products
-            with your Webflow store. Connect both services to get started.
+            This utility allows you to synchronize your Printful products with
+            your Webflow store. Connect both services to get started.
           </p>
         </div>
       </div>

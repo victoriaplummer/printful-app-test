@@ -22,6 +22,8 @@ interface PrintfulVariant {
   sku?: string;
   price?: string | number;
   lastSynced?: string;
+  thumbnail_url?: string;
+  preview_url?: string | null;
 }
 
 interface Product {
@@ -129,7 +131,20 @@ const ProductVariantRow: React.FC<{
     <td className="px-6 py-3 whitespace-nowrap">
       {/* Product cells are now empty since we group by product */}
     </td>
-    <td className="px-6 py-3 whitespace-nowrap">
+    <td className="px-6 py-3 whitespace-nowrap flex items-center gap-2">
+      {variant.preview_url && (
+        <div className="avatar">
+          <div className="mask mask-squircle w-8 h-8 relative">
+            <Image
+              src={variant.preview_url}
+              alt={variant.name}
+              fill
+              sizes="32px"
+              style={{ objectFit: "cover" }}
+            />
+          </div>
+        </div>
+      )}
       <div className="text-sm">{variant.name}</div>
     </td>
     <td className="px-6 py-3 whitespace-nowrap">
