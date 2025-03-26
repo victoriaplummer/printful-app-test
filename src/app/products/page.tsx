@@ -55,12 +55,12 @@ export default function ProductsPage() {
   // Fetch products with TanStack Query
   const {
     data: products = [],
-    isLoading: isLoadingProducts,
+    isLoading,
     error: productsError,
   } = useQuery({
     queryKey: ["products", settings.siteId],
     queryFn: () => fetchProducts(settings.siteId),
-    enabled: !!settings.siteId,
+    enabled: !!settings.siteId && !!session,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -79,7 +79,7 @@ export default function ProductsPage() {
           </div>
 
           {/* Only show products when we have a siteId and data is loaded */}
-          {settings.siteId && !isLoadingProducts && !productsError ? (
+          {settings.siteId && !isLoading && !productsError ? (
             <div>
               <ProductsFilters
                 searchQuery={searchQuery}
@@ -94,6 +94,7 @@ export default function ProductsPage() {
                 statusFilter={statusFilter}
                 selectedSiteId={settings.siteId}
                 webflowSettings={settings}
+                isLoading={isLoading}
               />
             </div>
           ) : !settings.siteId ? (
@@ -105,7 +106,7 @@ export default function ProductsPage() {
           ) : null}
 
           {/* Loading and error states */}
-          {isLoadingProducts && (
+          {isLoading && (
             <div className="flex justify-center items-center p-8">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
               <span className="ml-2">Loading products...</span>

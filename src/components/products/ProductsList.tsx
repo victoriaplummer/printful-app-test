@@ -46,6 +46,7 @@ interface ProductsListProps {
   statusFilter: string;
   selectedSiteId: string;
   webflowSettings: WebflowSettings;
+  isLoading?: boolean;
 }
 
 // API function for syncing products
@@ -271,6 +272,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({
   statusFilter,
   selectedSiteId,
   webflowSettings,
+  isLoading,
 }) => {
   const queryClient = useQueryClient();
 
@@ -282,9 +284,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({
   } = useMutation({
     mutationFn: syncProduct,
     onSuccess: (data, variables) => {
-      console.log("Sync completed successfully:", data);
-
-      // Optimistically update the cache
+      // Update cache with the actual server response
       queryClient.setQueriesData(
         { queryKey: ["products"] },
         (oldData: Product[] | unknown) => {
@@ -296,8 +296,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({
                 ...product,
                 variants: product.variants.map((variant) => ({
                   ...variant,
-                  lastSynced: new Date().toISOString(),
-                  sync_status: "synced",
+                  lastSynced: data.lastSynced || new Date().toISOString(),
+                  sync_status:
+                    data.status === "success" ? "synced" : "not_synced",
                 })),
               };
             }
@@ -305,12 +306,6 @@ export const ProductsList: React.FC<ProductsListProps> = ({
           });
         }
       );
-
-      // Instead of invalidating, we'll refetch in the background
-      queryClient.invalidateQueries({
-        queryKey: ["products"],
-        refetchType: "active",
-      });
     },
     onError: (error: Error) => {
       console.error("Sync failed:", error.message);
@@ -438,6 +433,14 @@ export const ProductsList: React.FC<ProductsListProps> = ({
       },
     });
   }, [queryClient]);
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">Loading products...</p>
+      </div>
+    );
+  }
 
   if (filteredProducts.length === 0) {
     return (
