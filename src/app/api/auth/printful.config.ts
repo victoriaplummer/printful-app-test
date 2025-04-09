@@ -40,7 +40,7 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
       client_id: process.env.PRINTFUL_CLIENT_ID,
       redirect_url:
         process.env.NODE_ENV === "production"
-          ? "https://weblfow-printful-sync-utility.vercel.app/api/auth/callback/printful"
+          ? "https://webflow-printful-sync-utility.vercel.app/api/auth/callback/printful"
           : `${process.env.NEXTAUTH_URL}/api/auth/callback/printful`,
       response_type: "code",
     },
@@ -51,7 +51,7 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
       const { provider, params } = context;
       const redirect_url =
         process.env.NODE_ENV === "production"
-          ? "https://weblfow-printful-sync-utility.vercel.app/api/auth/callback/printful"
+          ? "https://webflow-printful-sync-utility.vercel.app/api/auth/callback/printful"
           : `${process.env.NEXTAUTH_URL}/api/auth/callback/printful`;
 
       const response = await fetch("https://www.printful.com/oauth/token", {

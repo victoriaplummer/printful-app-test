@@ -176,7 +176,7 @@ const ProductHeader: React.FC<{
   selectedSiteId: string;
 }> = ({ product, onSyncAll, isSyncing, syncingProductId, selectedSiteId }) => (
   <tr className="bg-base-200">
-    <td colSpan={5} className="px-6 py-3">
+    <td colSpan={6} className="px-6 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           {product.thumbnail_url ? (
