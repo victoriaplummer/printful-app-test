@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "setup-redis": "node scripts/setup-redis.js"
+    "setup-redis": "node scripts/setup-redis.js",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
+    "@opennextjs/cloudflare": "^1.0.0-beta.3",
     "@prisma/client": "^6.5.0",
     "@tanstack/react-query": "^5.69.0",
     "daisyui": "^5.0.9",
@@ -21,7 +24,8 @@
     "prisma": "^6.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "webflow-api": "^3.1.1"
+    "webflow-api": "^3.1.1",
+    "wrangler": "^4.13.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
