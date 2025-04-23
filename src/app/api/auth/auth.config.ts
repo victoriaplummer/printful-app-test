@@ -4,6 +4,10 @@ import { webflowConfig } from "./webflow.config";
 import redisUtils from "../../../lib/redis";
 
 if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
+  console.log(
+    process.env.PRINTFUL_CLIENT_ID,
+    process.env.PRINTFUL_CLIENT_SECRET
+  );
   throw new Error("Missing Printful OAuth credentials");
 }
 
