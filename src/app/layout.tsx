@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import Navigation from "@/components/Navigation";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "Printful OAuth App",
@@ -20,6 +21,7 @@ export default function RootLayout({
       </head>
       <body>
         <Providers>
+          <Analytics />
           <Navigation />
           {children}
         </Providers>
