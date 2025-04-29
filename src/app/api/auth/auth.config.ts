@@ -68,6 +68,39 @@ export const authOptions: AuthOptions = {
       );
       return session;
     },
+
+    // Add a redirect callback to ensure basePath is included
+    async redirect({ url, baseUrl }) {
+      // Force the basePath to be /printful
+      const basePath = "/printful";
+      const parsedBaseUrl = new URL(baseUrl);
+
+      // Log the redirect info for debugging
+      console.log("NextAuth Redirect:", {
+        url,
+        baseUrl,
+        basePath,
+        forcedBasePath: "/printful",
+      });
+
+      // If the URL is absolute (has protocol)
+      if (url.startsWith("http")) {
+        return url;
+      }
+
+      // If URL already includes the base path
+      if (url.startsWith("/printful")) {
+        return `${parsedBaseUrl.origin}${url}`;
+      }
+
+      // For all other relative URLs, ensure they have the base path
+      if (url.startsWith("/")) {
+        return `${parsedBaseUrl.origin}${basePath}${url}`;
+      }
+
+      // Default case - redirect to home with base path
+      return `${parsedBaseUrl.origin}${basePath}`;
+    },
   },
   pages: {
     signIn: "/", // Use the homepage as sign-in page

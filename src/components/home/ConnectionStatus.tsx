@@ -9,9 +9,13 @@ export default function ConnectionStatus() {
 
   const handleSignIn = async (provider: "printful" | "webflow") => {
     try {
+      const baseUrl = `${window.location.origin}/printful`;
+      console.log(`Signing in with ${provider}...`);
+      console.log(`Using callback URL: ${baseUrl}`);
+
       await signIn(provider, {
         redirect: true,
-        callbackUrl: window.location.origin,
+        callbackUrl: baseUrl,
       });
     } catch (error) {
       console.error(`Error signing in with ${provider}:`, error);
