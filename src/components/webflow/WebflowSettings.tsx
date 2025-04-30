@@ -7,6 +7,9 @@ import {
   useWebflowSettings,
   WebflowSettingsData,
 } from "@/hooks/useWebflowSettings";
+import nextConfig from "../../../next.config";
+
+const basePath = nextConfig.basePath;
 
 interface WebflowSettingsProps {
   onSettingsChange?: (settings: WebflowSettingsData) => void;
@@ -24,7 +27,7 @@ export default function WebflowSettings({
   const { data: sites, isLoading } = useQuery({
     queryKey: ["webflow-sites"],
     queryFn: async () => {
-      const response = await fetch("/api/webflow/sites");
+      const response = await fetch(`${basePath}/api/webflow/sites`);
       if (!response.ok) {
         throw new Error("Failed to fetch sites");
       }

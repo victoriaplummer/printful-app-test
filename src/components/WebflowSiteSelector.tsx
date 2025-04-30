@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import nextConfig from "../../next.config";
+
+const basePath = nextConfig.basePath;
 
 interface WebflowSite {
   id: string;
@@ -30,7 +33,7 @@ export default function WebflowSiteSelector({
         setIsLoading(true);
         setError(null);
 
-        const response = await fetch("/api/webflow/sites");
+        const response = await fetch(`${basePath}/api/webflow/sites`);
         if (!response.ok) {
           throw new Error(
             `Failed to fetch sites: ${response.status} ${response.statusText}`

@@ -2,6 +2,9 @@
 
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import nextConfig from "../../../next.config.js";
+
+const basePath = nextConfig.basePath || "";
 
 export default function ConnectionStatus() {
   const { data: session } = useSession();
@@ -11,7 +14,7 @@ export default function ConnectionStatus() {
     try {
       await signIn(provider, {
         redirect: true,
-        callbackUrl: window.location.origin,
+        callbackUrl: `${window.location.origin}${basePath}`,
       });
     } catch (error) {
       console.error(`Error signing in with ${provider}:`, error);
