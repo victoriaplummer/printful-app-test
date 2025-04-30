@@ -13,8 +13,16 @@ declare module "next-auth" {
   }
 }
 
-if (!process.env.WEBFLOW_CLIENT_ID || !process.env.WEBFLOW_CLIENT_SECRET) {
-  throw new Error("Missing Webflow OAuth credentials");
+// Remove the hard error and only throw during runtime, not build
+const isBuildPhase =
+  process.env.NODE_ENV === "production" &&
+  typeof window === "undefined" &&
+  !process.env.NEXT_RUNTIME;
+if (
+  !isBuildPhase &&
+  (!process.env.WEBFLOW_CLIENT_ID || !process.env.WEBFLOW_CLIENT_SECRET)
+) {
+  console.warn("Missing Webflow OAuth credentials");
 }
 
 interface WebflowTokenResponse {

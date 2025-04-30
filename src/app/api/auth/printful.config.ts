@@ -10,8 +10,16 @@ declare module "next-auth" {
   }
 }
 
-if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
-  throw new Error("Missing Printful OAuth credentials");
+// Remove the hard error and only throw during runtime, not build
+const isBuildPhase =
+  process.env.NODE_ENV === "production" &&
+  typeof window === "undefined" &&
+  !process.env.NEXT_RUNTIME;
+if (
+  !isBuildPhase &&
+  (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET)
+) {
+  console.warn("Missing Printful OAuth credentials");
 }
 
 interface PrintfulTokens {
@@ -30,6 +38,15 @@ interface PrintfulProfile {
   name: string;
 }
 
+// Fix the callback URL to include /api/auth
+const getCallbackUrl = () => {
+  return process.env.NODE_ENV === "production"
+    ? "https://webflow-printful-sync-utility.vercel.app/api/auth/callback/printful"
+    : `${
+        process.env.NEXTAUTH_URL || "http://localhost:3000"
+      }/api/auth/callback/printful`;
+};
+
 export const printfulConfig: OAuthConfig<PrintfulProfile> = {
   id: "printful",
   name: "Printful",
@@ -38,10 +55,7 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
     url: "https://www.printful.com/oauth/authorize",
     params: {
       client_id: process.env.PRINTFUL_CLIENT_ID,
-      redirect_url:
-        process.env.NODE_ENV === "production"
-          ? "https://webflow-printful-sync-utility.vercel.app/api/auth/callback/printful"
-          : `${process.env.NEXTAUTH_URL}/callback/printful`,
+      redirect_url: getCallbackUrl(),
       response_type: "code",
     },
   },
@@ -49,10 +63,7 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
     url: "https://www.printful.com/oauth/token",
     async request(context) {
       const { provider, params } = context;
-      const redirect_url =
-        process.env.NODE_ENV === "production"
-          ? "https://webflow-printful-sync-utility.vercel.app/api/auth/callback/printful"
-          : `${process.env.NEXTAUTH_URL}/callback/printful`;
+      const redirect_url = getCallbackUrl();
 
       const response = await fetch("https://www.printful.com/oauth/token", {
         method: "POST",
