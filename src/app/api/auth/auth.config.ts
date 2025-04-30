@@ -2,6 +2,10 @@ import { AuthOptions } from "next-auth";
 import { printfulConfig } from "./printful.config";
 import { webflowConfig } from "./webflow.config";
 import redisUtils from "../../../lib/redis";
+import nextConfig from "../../../../next.config.js";
+
+// Make sure basePath is never undefined
+const basePath = nextConfig.basePath || "";
 
 if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
   throw new Error("Missing Printful OAuth credentials");
@@ -14,6 +18,10 @@ if (!process.env.WEBFLOW_CLIENT_ID || !process.env.WEBFLOW_CLIENT_SECRET) {
 if (!process.env.NEXTAUTH_URL) {
   throw new Error("Missing NEXTAUTH_URL environment variable");
 }
+
+// Log for debugging
+console.log(`Auth config initialized with basePath: ${basePath}`);
+console.log(`NEXTAUTH_URL is set to: ${process.env.NEXTAUTH_URL}`);
 
 export const authOptions: AuthOptions = {
   providers: [webflowConfig, printfulConfig], // Order matters - Webflow first

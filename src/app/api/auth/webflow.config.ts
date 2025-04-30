@@ -1,4 +1,8 @@
 import type { OAuthConfig } from "next-auth/providers/oauth";
+import nextConfig from "../../../../next.config.js";
+
+// Get the base path for consistent URL handling
+const basePath = nextConfig.basePath || "";
 
 declare module "next-auth" {
   interface Session {
@@ -27,6 +31,23 @@ interface WebflowProfile {
   lastName: string;
 }
 
+// Construct the proper redirect URI with basePath
+const getRedirectUri = () => {
+  // If WEBFLOW_REDIRECT_URI is set, use it
+  if (process.env.WEBFLOW_REDIRECT_URI) {
+    if (process.env.WEBFLOW_REDIRECT_URI.startsWith("http")) {
+      return process.env.WEBFLOW_REDIRECT_URI;
+    }
+    return `https://${process.env.WEBFLOW_REDIRECT_URI}`;
+  }
+
+  // Otherwise, construct from NEXTAUTH_URL
+  const baseUrl =
+    process.env.NEXTAUTH_URL || `http://localhost:3000${basePath}`;
+  console.log("baseUrl", baseUrl);
+  return `${baseUrl}/api/auth/callback/webflow`;
+};
+
 export const webflowConfig: OAuthConfig<WebflowProfile> = {
   id: "webflow",
   name: "Webflow",
@@ -37,9 +58,7 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
       scope:
         "sites:read ecommerce:read ecommerce:write authorized_user:read cms:read cms:write",
       client_id: process.env.WEBFLOW_CLIENT_ID,
-      redirect_uri: process.env.WEBFLOW_REDIRECT_URI?.startsWith("http")
-        ? process.env.WEBFLOW_REDIRECT_URI
-        : `https://${process.env.WEBFLOW_REDIRECT_URI}`,
+      redirect_uri: getRedirectUri(),
       response_type: "code",
     },
   },
@@ -50,7 +69,7 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
         hasClientId: !!provider.clientId,
         hasClientSecret: !!provider.clientSecret,
         hasCode: !!params.code,
-        redirectUri: process.env.WEBFLOW_REDIRECT_URI,
+        redirectUri: getRedirectUri(),
       });
 
       const response = await fetch(
@@ -66,10 +85,7 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
             client_secret: provider.clientSecret || "",
             code: params.code || "",
             grant_type: "authorization_code",
-            redirect_uri:
-              (process.env.WEBFLOW_REDIRECT_URI?.startsWith("http")
-                ? process.env.WEBFLOW_REDIRECT_URI
-                : `https://${process.env.WEBFLOW_REDIRECT_URI}`) || "",
+            redirect_uri: getRedirectUri(),
           } as Record<string, string>).toString(),
           signal: AbortSignal.timeout(10000), // 10 second timeout
         }
