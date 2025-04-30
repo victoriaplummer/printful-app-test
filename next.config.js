@@ -10,6 +10,17 @@ const nextConfig = {
       },
     ],
   },
+  // Add webpack configuration to handle crypto module in edge runtime
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Replace crypto with empty module for client-side
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: false,
+      };
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;

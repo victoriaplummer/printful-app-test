@@ -39,5 +39,11 @@
     "eslint-plugin-spellcheck": "^0.0.20",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "imports": {
+    "crypto": {
+      "edge-runtime": "./src/lib/auth-crypto.ts",
+      "default": "crypto"
+    }
   }
 }
