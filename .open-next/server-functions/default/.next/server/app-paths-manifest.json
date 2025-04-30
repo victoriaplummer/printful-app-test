@@ -1,0 +1,20 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/auth/webflow/callback/route": "app/api/auth/webflow/callback/route.js",
+  "/api/printful/test/route": "app/api/printful/test/route.js",
+  "/api/webflow/orders/fulfill-bulk/route": "app/api/webflow/orders/fulfill-bulk/route.js",
+  "/api/webflow/orders/fulfill/route": "app/api/webflow/orders/fulfill/route.js",
+  "/api/webflow/orders/route": "app/api/webflow/orders/route.js",
+  "/api/webflow/products/sync/route": "app/api/webflow/products/sync/route.js",
+  "/api/webflow/sync/route": "app/api/webflow/sync/route.js",
+  "/api/printful/store/products/route": "app/api/printful/store/products/route.js",
+  "/api/webflow/sites/route": "app/api/webflow/sites/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/api/webflow/webhooks/order/route": "app/api/webflow/webhooks/order/route.js",
+  "/page": "app/page.js",
+  "/account/page": "app/account/page.js",
+  "/auth-status/page": "app/auth-status/page.js",
+  "/products/page": "app/products/page.js",
+  "/orders/page": "app/orders/page.js"
+}

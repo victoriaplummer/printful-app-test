@@ -1,0 +1,20 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
+  "/api/auth/webflow/callback/route": "/api/auth/webflow/callback",
+  "/api/printful/test/route": "/api/printful/test",
+  "/api/webflow/orders/fulfill-bulk/route": "/api/webflow/orders/fulfill-bulk",
+  "/api/webflow/orders/fulfill/route": "/api/webflow/orders/fulfill",
+  "/api/webflow/orders/route": "/api/webflow/orders",
+  "/api/webflow/products/sync/route": "/api/webflow/products/sync",
+  "/api/webflow/sync/route": "/api/webflow/sync",
+  "/api/printful/store/products/route": "/api/printful/store/products",
+  "/api/webflow/sites/route": "/api/webflow/sites",
+  "/favicon.ico/route": "/favicon.ico",
+  "/api/webflow/webhooks/order/route": "/api/webflow/webhooks/order",
+  "/page": "/",
+  "/account/page": "/account",
+  "/auth-status/page": "/auth-status",
+  "/products/page": "/products",
+  "/orders/page": "/orders"
+}
