@@ -5,6 +5,8 @@ const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
 
-// Configure this endpoint to use Edge Runtime
-export const runtime = "edge";
+// Use Node.js runtime instead of Edge because NextAuth needs crypto
+export const runtime = "nodejs";
+
+// Keep the dynamic flag
 export const dynamic = "force-dynamic";
