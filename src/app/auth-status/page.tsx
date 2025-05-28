@@ -21,7 +21,7 @@ function AuthStatusPageContent() {
   const testApi = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/cosmic/api/printful/store/products");
+      const response = await fetch("/cosmic-2/api/printful/store/products");
       const data = await response.json();
       setApiResponse(data);
     } catch (error) {

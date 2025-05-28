@@ -67,7 +67,7 @@ const syncProduct = async ({
       { settings }
     );
 
-    const response = await fetch(`/cosmic/api/webflow/sync`, {
+    const response = await fetch(`/cosmic-2/api/webflow/sync`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

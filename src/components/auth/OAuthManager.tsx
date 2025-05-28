@@ -61,7 +61,7 @@ export default function OAuthManager() {
 
     try {
       const response = await fetch(
-        `/cosmic/api/auth/url?provider=${provider}`,
+        `/cosmic-2/api/auth/url?provider=${provider}`,
         {
           credentials: "include",
         }

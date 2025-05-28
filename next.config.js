@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  basePath: "/cosmic",
+  basePath: "/cosmic-2",
   images: {
     remotePatterns: [
       {

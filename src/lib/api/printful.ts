@@ -54,7 +54,7 @@ export interface SyncResponse {
 
 export const fetchPrintfulProducts = async (): Promise<PrintfulProduct[]> => {
   try {
-    const response = await fetch("/cosmic/api/printful/store/products", {
+    const response = await fetch("/cosmic-2/api/printful/store/products", {
       credentials: "include",
     });
 
@@ -102,7 +102,7 @@ export const syncProductToWebflow = async (
   }
 
   try {
-    const response = await fetch("/cosmic/api/webflow/sync", {
+    const response = await fetch("/cosmic-2/api/webflow/sync", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -3,11 +3,11 @@ import { ensureSession } from "@/lib/auth/session";
 
 export async function middleware(request: NextRequest) {
   // Only handle API routes that need sessions
-  if (request.nextUrl.pathname.startsWith("/cosmic/api/")) {
+  if (request.nextUrl.pathname.startsWith("/cosmic-2/api/")) {
     // Skip auth routes and session routes
     if (
-      request.nextUrl.pathname.startsWith("/cosmic/api/auth/") ||
-      request.nextUrl.pathname.startsWith("/cosmic/api/session")
+      request.nextUrl.pathname.startsWith("/cosmic-2/api/auth/") ||
+      request.nextUrl.pathname.startsWith("/cosmic-2/api/session")
     ) {
       return NextResponse.next();
     }

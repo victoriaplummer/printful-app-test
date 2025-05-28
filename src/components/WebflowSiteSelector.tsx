@@ -30,7 +30,7 @@ export default function WebflowSiteSelector({
         setIsLoading(true);
         setError(null);
 
-        const response = await fetch("/cosmic/api/webflow/sites");
+        const response = await fetch("/cosmic-2/api/webflow/sites");
         if (!response.ok) {
           throw new Error(
             `Failed to fetch sites: ${response.status} ${response.statusText}`

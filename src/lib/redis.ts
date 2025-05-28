@@ -26,7 +26,7 @@ const isAuthPath = () => {
     // Check if we're in an auth-related path
     const isNextAuthPath =
       process.env.NEXT_RUNTIME === "nodejs" &&
-      (process.env.PATH_INFO?.includes("/cosmic/api/auth") ||
+      (process.env.PATH_INFO?.includes("/cosmic-2/api/auth") ||
         process.env.NEXT_URL?.includes("cosmic/api/auth"));
 
     return isNextAuthPath;

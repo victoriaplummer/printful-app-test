@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 const fetchProducts = async (siteId: string) => {
   try {
     const response = await fetch(
-      `/cosmic/api/printful/store/products?siteId=${siteId}`
+      `/cosmic-2/api/printful/store/products?siteId=${siteId}`
     );
     if (!response.ok) {
       console.error(

@@ -38,7 +38,7 @@ export default function OrdersPage() {
       if (!settings.siteId) return { result: [] };
 
       const response = await fetch(
-        `/cosmic/api/webflow/orders?siteId=${settings.siteId}`
+        `/cosmic-2/api/webflow/orders?siteId=${settings.siteId}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch orders");
@@ -54,13 +54,16 @@ export default function OrdersPage() {
   // Bulk send to Printful mutation
   const { mutate: sendAllToPrintful, isPending: isSendingAll } = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/cosmic/api/webflow/orders/fulfill-bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ siteId: settings.siteId }),
-      });
+      const response = await fetch(
+        "/cosmic-2/api/webflow/orders/fulfill-bulk",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ siteId: settings.siteId }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();

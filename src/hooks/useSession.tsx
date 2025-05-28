@@ -37,7 +37,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch("/cosmic/api/session", {
+        const response = await fetch("/cosmic-2/api/session", {
           credentials: "include",
         });
 
@@ -62,7 +62,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     tokens: OAuthTokens
   ) => {
     try {
-      const response = await fetch("/cosmic/api/session/tokens", {
+      const response = await fetch("/cosmic-2/api/session/tokens", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,7 +86,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const clearTokens = async (provider: "webflow" | "printful") => {
     try {
       const response = await fetch(
-        `/cosmic/api/session/tokens?provider=${provider}`,
+        `/cosmic-2/api/session/tokens?provider=${provider}`,
         {
           method: "DELETE",
           credentials: "include",
@@ -107,7 +107,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const refreshTokens = async () => {
     try {
-      const response = await fetch("/cosmic/api/session", {
+      const response = await fetch("/cosmic-2/api/session", {
         credentials: "include",
       });
 
