@@ -1,4 +1,5 @@
-import type { OAuthConfig } from "next-auth/providers/oauth";
+import type { OAuthConfig, OAuthUserConfig } from "@auth/core/providers/oauth";
+import type { TokenSet } from "@auth/core/types";
 import { authStorage } from "../../../lib/storage";
 
 declare module "next-auth" {
@@ -30,6 +31,15 @@ interface PrintfulProfile {
   name: string;
 }
 
+interface PrintfulTokenContext {
+  provider: OAuthUserConfig<PrintfulProfile>;
+  params: { code?: string };
+}
+
+interface PrintfulUserContext {
+  tokens: TokenSet;
+}
+
 export const printfulConfig: OAuthConfig<PrintfulProfile> = {
   id: "printful",
   name: "Printful",
@@ -47,7 +57,7 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
   },
   token: {
     url: "https://www.printful.com/oauth/token",
-    async request(context) {
+    async request(context: PrintfulTokenContext) {
       const { provider, params } = context;
       const redirect_url =
         process.env.NODE_ENV === "production"
@@ -93,7 +103,7 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
   },
   userinfo: {
     url: "https://api.printful.com/store/products",
-    async request(context) {
+    async request(context: PrintfulUserContext) {
       const { tokens } = context;
       const response = await fetch("https://api.printful.com/store/products", {
         headers: {

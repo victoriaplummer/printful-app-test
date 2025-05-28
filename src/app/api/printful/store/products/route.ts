@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../../auth/auth.config";
+import { auth } from "../../../auth/auth.config";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
 import * as Webflow from "webflow-api/api";
@@ -44,7 +43,7 @@ interface PrintfulVariantDetails {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session) {
     return NextResponse.json(

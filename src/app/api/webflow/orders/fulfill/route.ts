@@ -1,12 +1,11 @@
+import { auth } from "../../../auth/auth.config";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/auth.config";
 import { WebflowClient } from "webflow-api";
 
 export const runtime = "edge";
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session?.webflowAccessToken || !session?.printfulAccessToken) {
     return NextResponse.json(

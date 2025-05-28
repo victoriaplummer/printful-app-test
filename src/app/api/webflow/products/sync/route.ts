@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/auth.config";
+import { auth } from "@/app/api/auth/auth.config";
 import { WebflowClient } from "webflow-api";
 
 export const runtime = "edge";
@@ -36,7 +35,7 @@ interface WebflowApiProduct {
 
 export async function POST(request: Request) {
   console.log("=== STARTING PRODUCTS SYNC PROCESS ===");
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   // Parse request body if needed
   const body = await request.json().catch(() => ({}));

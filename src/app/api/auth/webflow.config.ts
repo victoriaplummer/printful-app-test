@@ -1,4 +1,5 @@
-import type { OAuthConfig } from "next-auth/providers/oauth";
+import type { OAuthConfig, OAuthUserConfig } from "@auth/core/providers/oauth";
+import type { TokenSet } from "@auth/core/types";
 
 declare module "next-auth" {
   interface Session {
@@ -27,6 +28,15 @@ interface WebflowProfile {
   lastName: string;
 }
 
+interface WebflowTokenContext {
+  provider: OAuthUserConfig<WebflowProfile>;
+  params: { code?: string };
+}
+
+interface WebflowUserContext {
+  tokens: TokenSet;
+}
+
 export const webflowConfig: OAuthConfig<WebflowProfile> = {
   id: "webflow",
   name: "Webflow",
@@ -45,7 +55,8 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
   },
   token: {
     url: "https://api.webflow.com/oauth/access_token",
-    async request({ provider, params }) {
+    async request(context: WebflowTokenContext) {
+      const { provider, params } = context;
       console.log("Starting token exchange with params:", {
         hasClientId: !!provider.clientId,
         hasClientSecret: !!provider.clientSecret,
@@ -119,7 +130,7 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
   },
   userinfo: {
     url: "https://api.webflow.com/v2/token/authorized_by",
-    async request(context) {
+    async request(context: WebflowUserContext) {
       if (process.env.NODE_ENV === "development") {
         console.log("Context in userinfo:", {
           hasTokens: !!context.tokens,

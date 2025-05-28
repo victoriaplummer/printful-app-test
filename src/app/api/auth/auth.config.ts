@@ -1,7 +1,6 @@
-import { AuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import { printfulConfig } from "./printful.config";
 import { webflowConfig } from "./webflow.config";
-import redisUtils from "../../../lib/redis";
 
 if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
   throw new Error("Missing Printful OAuth credentials");
@@ -15,7 +14,20 @@ if (!process.env.NEXTAUTH_URL) {
   throw new Error("Missing NEXTAUTH_URL environment variable");
 }
 
-export const authOptions: AuthOptions = {
+// Extend the built-in session types
+declare module "next-auth" {
+  interface Session {
+    printfulAccessToken?: string;
+    webflowAccessToken?: string;
+    isMultiConnected?: boolean;
+  }
+  interface JWT {
+    printfulAccessToken?: string;
+    webflowAccessToken?: string;
+  }
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [webflowConfig, printfulConfig], // Order matters - Webflow first
   session: {
     strategy: "jwt",
@@ -29,40 +41,24 @@ export const authOptions: AuthOptions = {
 
     async jwt({ token, account }) {
       if (account) {
-        // Store tokens in both Redis and JWT, preserving existing tokens
+        // Store tokens in JWT
         if (account.provider === "printful" && account.access_token) {
-          await redisUtils.storeProviderToken("printful", account.access_token);
-          token.printfulAccessToken = account.access_token; // Store in JWT
-          // Preserve webflow token if it exists
-          if (!token.webflowAccessToken) {
-            token.webflowAccessToken =
-              (await redisUtils.getProviderToken("webflow")) || undefined;
-          }
+          token.printfulAccessToken = account.access_token;
         } else if (account.provider === "webflow" && account.access_token) {
-          await redisUtils.storeProviderToken("webflow", account.access_token);
-          token.webflowAccessToken = account.access_token; // Store in JWT
-          // Preserve printful token if it exists
-          if (!token.printfulAccessToken) {
-            token.printfulAccessToken =
-              (await redisUtils.getProviderToken("printful")) || undefined;
-          }
+          token.webflowAccessToken = account.access_token;
         }
       }
       return token;
     },
 
     async session({ session, token }) {
-      // Always try both JWT and Redis for each provider
-      session.printfulAccessToken =
-        token.printfulAccessToken ||
-        (await redisUtils.getProviderToken("printful")) ||
-        undefined;
-
-      session.webflowAccessToken =
-        token.webflowAccessToken ||
-        (await redisUtils.getProviderToken("webflow")) ||
-        undefined;
-
+      // Get tokens from JWT
+      session.printfulAccessToken = token.printfulAccessToken as
+        | string
+        | undefined;
+      session.webflowAccessToken = token.webflowAccessToken as
+        | string
+        | undefined;
       session.isMultiConnected = !!(
         session.printfulAccessToken && session.webflowAccessToken
       );
@@ -73,5 +69,5 @@ export const authOptions: AuthOptions = {
     signIn: "/", // Use the homepage as sign-in page
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true,
-};
+  debug: process.env.NODE_ENV === "development",
+});

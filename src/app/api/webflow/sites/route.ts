@@ -1,6 +1,5 @@
+import { auth } from "../../auth/auth.config";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/auth.config";
 import { WebflowClient } from "webflow-api";
 
 export const runtime = "edge";
@@ -21,7 +20,7 @@ interface SitesResponse {
 export async function GET() {
   try {
     // Get session to check if user is authenticated and has Webflow token
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session || !session.webflowAccessToken) {
       return NextResponse.json(
