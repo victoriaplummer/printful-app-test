@@ -38,7 +38,7 @@ export default function OrderDetails({
     queryKey: ["order-details", siteId, orderId],
     queryFn: async () => {
       const response = await fetch(
-        `/api/webflow/orders/${orderId}?siteId=${siteId}`
+        `/cosmic/api/webflow/orders/${orderId}?siteId=${siteId}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch order details");
@@ -50,7 +50,7 @@ export default function OrderDetails({
   // Send order to Printful mutation
   const { mutate: sendToPrintful, isPending: isSending } = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/webflow/orders/fulfill", {
+      const response = await fetch("/cosmic/api/webflow/orders/fulfill", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

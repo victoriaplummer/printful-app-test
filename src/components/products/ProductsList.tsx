@@ -68,7 +68,7 @@ const syncProduct = async ({
     );
 
     // Ensure the user is authenticated first by checking the session
-    const sessionResponse = await fetch("/api/auth/session");
+    const sessionResponse = await fetch("/cosmic/api/auth/session");
     const sessionData = await sessionResponse.json();
 
     if (!sessionData || !sessionData.user) {
@@ -78,7 +78,7 @@ const syncProduct = async ({
 
     console.log("Session check passed, proceeding with sync");
 
-    const response = await fetch(`/api/webflow/sync`, {
+    const response = await fetch(`/cosmic/api/webflow/sync`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

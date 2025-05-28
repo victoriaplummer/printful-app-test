@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/auth.config";
 import { WebflowClient } from "webflow-api";
 
+export const runtime = "edge";
+
 // Define interface based on actual API response
 interface WebflowSite {
   id: string;

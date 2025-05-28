@@ -55,11 +55,14 @@ export interface SyncResponse {
 export const fetchPrintfulProducts = async () => {
   try {
     // First, fetch the product list
-    const productsResponse = await fetch("/api/printful/store/products", {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const productsResponse = await fetch(
+      "/cosmic/api/printful/store/products",
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!productsResponse.ok) {
       console.error(
@@ -85,7 +88,7 @@ export const fetchPrintfulProducts = async () => {
       productsList.map(async (product) => {
         try {
           const detailResponse = await fetch(
-            `/api/printful/store/product?id=${product.id}`,
+            `/cosmic/api/printful/store/product?id=${product.id}`,
             {
               headers: {
                 "Content-Type": "application/json",
@@ -167,7 +170,7 @@ export const syncProductToWebflow = async (
   }
 
   try {
-    const response = await fetch("/api/webflow/sync", {
+    const response = await fetch("/cosmic/api/webflow/sync", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

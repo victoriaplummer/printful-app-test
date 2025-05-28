@@ -13,7 +13,7 @@ import { useWebflowSettings } from "@/hooks/useWebflowSettings";
 const fetchProducts = async (siteId: string) => {
   try {
     const response = await fetch(
-      `/api/printful/store/products?siteId=${siteId}`
+      `/cosmic/api/printful/store/products?siteId=${siteId}`
     );
     if (!response.ok) {
       console.error(
