@@ -57,7 +57,7 @@ function getPrintfulConfig(): OAuthConfig {
     ),
     redirectUri:
       process.env.NODE_ENV === "production"
-        ? "https://webflow-printful-sync-utility.vercel.app/cosmic-2/api/auth/printful/callback"
+        ? "https://cosmic-test-0501.webflow.io/cosmic-2/api/auth/printful/callback"
         : "http://localhost:3000/cosmic-2/api/auth/printful/callback",
     authUrl: "https://www.printful.com/oauth/authorize",
     tokenUrl: "https://www.printful.com/oauth/token",
