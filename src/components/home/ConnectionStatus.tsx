@@ -20,7 +20,7 @@ export default function ConnectionStatus() {
     }
 
     try {
-      const authUrl = getAuthUrl(provider);
+      const authUrl = await getAuthUrl(provider);
       window.location.href = authUrl;
     } catch (error) {
       console.error(`Error connecting to ${provider}:`, error);
