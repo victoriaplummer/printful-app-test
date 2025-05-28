@@ -2,17 +2,7 @@ import NextAuth from "next-auth";
 import { printfulConfig } from "./printful.config";
 import { webflowConfig } from "./webflow.config";
 
-if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
-  throw new Error("Missing Printful OAuth credentials");
-}
-
-if (!process.env.WEBFLOW_CLIENT_ID || !process.env.WEBFLOW_CLIENT_SECRET) {
-  throw new Error("Missing Webflow OAuth credentials");
-}
-
-if (!process.env.NEXTAUTH_URL) {
-  throw new Error("Missing NEXTAUTH_URL environment variable");
-}
+// Remove build-time checks - these will be handled at runtime when the auth functions are called
 
 // Extend the built-in session types
 declare module "next-auth" {

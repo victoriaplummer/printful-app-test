@@ -11,10 +11,6 @@ declare module "next-auth" {
   }
 }
 
-if (!process.env.PRINTFUL_CLIENT_ID || !process.env.PRINTFUL_CLIENT_SECRET) {
-  throw new Error("Missing Printful OAuth credentials");
-}
-
 interface PrintfulTokens {
   access_token?: string;
   refresh_token?: string;
@@ -59,6 +55,16 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
     url: "https://www.printful.com/oauth/token",
     async request(context: PrintfulTokenContext) {
       const { provider, params } = context;
+
+      if (
+        !process.env.PRINTFUL_CLIENT_ID ||
+        !process.env.PRINTFUL_CLIENT_SECRET
+      ) {
+        throw new Error(
+          "Missing Printful OAuth credentials. Please ensure PRINTFUL_CLIENT_ID and PRINTFUL_CLIENT_SECRET are set."
+        );
+      }
+
       const redirect_url =
         process.env.NODE_ENV === "production"
           ? "https://webflow-printful-sync-utility.vercel.app/cosmic/api/auth/callback/printful"
@@ -80,7 +86,6 @@ export const printfulConfig: OAuthConfig<PrintfulProfile> = {
 
       const tokens: PrintfulTokens = await response.json();
 
-      // Handle Printful's nested token response
       const access_token = tokens.access_token || tokens.result?.access_token;
       const refresh_token =
         tokens.refresh_token || tokens.result?.refresh_token;

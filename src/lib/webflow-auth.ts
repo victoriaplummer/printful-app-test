@@ -6,7 +6,9 @@ const checkEnvVariables = () => {
     !process.env.WEBFLOW_CLIENT_SECRET ||
     !process.env.WEBFLOW_REDIRECT_URI
   ) {
-    throw new Error("Missing Webflow environment variables");
+    throw new Error(
+      "Missing Webflow environment variables. Please ensure WEBFLOW_CLIENT_ID, WEBFLOW_CLIENT_SECRET, and WEBFLOW_REDIRECT_URI are set."
+    );
   }
 };
 

@@ -10,10 +10,6 @@ declare module "next-auth" {
   }
 }
 
-if (!process.env.WEBFLOW_CLIENT_ID || !process.env.WEBFLOW_CLIENT_SECRET) {
-  throw new Error("Missing Webflow OAuth credentials");
-}
-
 interface WebflowTokenResponse {
   access_token: string;
   token_type: string;
@@ -57,6 +53,17 @@ export const webflowConfig: OAuthConfig<WebflowProfile> = {
     url: "https://api.webflow.com/oauth/access_token",
     async request(context: WebflowTokenContext) {
       const { provider, params } = context;
+
+      // Runtime validation of environment variables
+      if (
+        !process.env.WEBFLOW_CLIENT_ID ||
+        !process.env.WEBFLOW_CLIENT_SECRET
+      ) {
+        throw new Error(
+          "Missing Webflow OAuth credentials. Please ensure WEBFLOW_CLIENT_ID and WEBFLOW_CLIENT_SECRET are set."
+        );
+      }
+
       console.log("Starting token exchange with params:", {
         hasClientId: !!provider.clientId,
         hasClientSecret: !!provider.clientSecret,
