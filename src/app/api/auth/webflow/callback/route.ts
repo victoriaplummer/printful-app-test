@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     await storeSessionTokens(session.sessionId, "webflow", tokens);
 
     // Redirect back to app
-    const redirectUrl = new URL("/cosmic-2", request.url);
+    const redirectUrl = new URL("/", request.url);
     redirectUrl.searchParams.set("webflow_success", "true");
 
     const response = NextResponse.redirect(redirectUrl);
