@@ -12,8 +12,6 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
-    "@auth/core": "^0.34.2",
-    "@auth/nextjs": "^0.0.0-380f8d56",
     "@opennextjs/cloudflare": "^1.0.0-beta.4",
     "@prisma/client": "^6.5.0",
     "@tanstack/react-query": "^5.69.0",
