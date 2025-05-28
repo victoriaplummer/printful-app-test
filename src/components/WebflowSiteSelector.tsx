@@ -38,11 +38,11 @@ export default function WebflowSiteSelector({
         }
 
         const data = await response.json();
-        setWebflowSites(data.sites || []);
+        setWebflowSites(data.result || []);
 
         // Only auto-select if there's exactly one site and no site is already selected
-        if (data.sites?.length === 1 && !selectedSiteId) {
-          onSiteSelect(data.sites[0].id);
+        if (data.result?.length === 1 && !selectedSiteId) {
+          onSiteSelect(data.result[0].id);
         }
       } catch (err) {
         console.error("Error fetching Webflow sites:", err);

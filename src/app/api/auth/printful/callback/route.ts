@@ -15,10 +15,10 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
 
     if (error) {
-      console.error("Webflow OAuth error:", error);
+      console.error("Printful OAuth error:", error);
       return NextResponse.redirect(
         new URL(
-          `/cosmic?error=webflow_auth_failed&details=${encodeURIComponent(
+          `/cosmic?error=printful_auth_failed&details=${encodeURIComponent(
             error
           )}`,
           request.url
@@ -33,29 +33,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for tokens
-    const tokens = await exchangeCodeForTokens("webflow", code);
+    const tokens = await exchangeCodeForTokens("printful", code);
 
     // Store tokens in user metadata via client-side redirect
     // We'll pass the tokens as URL params for the client to handle
     const redirectUrl = new URL("/cosmic", request.url);
-    redirectUrl.searchParams.set("webflow_success", "true");
-    redirectUrl.searchParams.set("webflow_token", tokens.access_token);
+    redirectUrl.searchParams.set("printful_success", "true");
+    redirectUrl.searchParams.set("printful_token", tokens.access_token);
     if (tokens.refresh_token) {
-      redirectUrl.searchParams.set("webflow_refresh", tokens.refresh_token);
+      redirectUrl.searchParams.set("printful_refresh", tokens.refresh_token);
     }
     if (tokens.expires_at) {
       redirectUrl.searchParams.set(
-        "webflow_expires",
+        "printful_expires",
         tokens.expires_at.toString()
       );
     }
 
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
-    console.error("Webflow callback error:", error);
+    console.error("Printful callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/cosmic?error=webflow_callback_failed&details=${encodeURIComponent(
+        `/cosmic?error=printful_callback_failed&details=${encodeURIComponent(
           String(error)
         )}`,
         request.url

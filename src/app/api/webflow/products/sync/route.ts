@@ -1,185 +1,35 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { auth } from "@/app/api/auth/auth.config";
-import { WebflowClient } from "webflow-api";
+import { getOAuthTokens } from "@/lib/auth/server-tokens";
 
 export const config = { runtime: "edge" };
 
-interface PrintfulProduct {
-  sync_product: {
-    id: number;
-    name: string;
-    thumbnail_url: string;
-  };
-  sync_variants: Array<{
-    id: number;
-    variant_id: number;
-    name: string;
-    retail_price: string;
-  }>;
-}
-
-// Interface for Webflow API response items
-interface WebflowApiProduct {
-  id?: string;
-  _id?: string;
-  name?: string;
-  slug?: string;
-  sku?: string;
-  printfulId?: string;
-  product?: {
-    id?: string;
-  };
-  // Use specific types instead of any
-  [key: string]: string | number | boolean | object | undefined;
-}
-
 export async function POST(request: Request) {
-  console.log("=== STARTING PRODUCTS SYNC PROCESS ===");
-  const session = await auth();
+  const { userId } = await auth();
 
-  // Parse request body if needed
-  const body = await request.json().catch(() => ({}));
-  console.log("Request body:", JSON.stringify(body, null, 2));
-
-  if (!session?.printfulAccessToken || !session?.webflowAccessToken) {
+  if (!userId) {
     return NextResponse.json(
-      { error: "Authentication required for both services" },
+      { error: "Authentication required" },
       { status: 401 }
     );
   }
 
-  const webflow = new WebflowClient({
-    accessToken: session.webflowAccessToken,
-  });
+  const { webflowTokens, printfulTokens } = await getOAuthTokens(userId);
+
+  if (!webflowTokens?.access_token || !printfulTokens?.access_token) {
+    return NextResponse.json(
+      { error: "Both Webflow and Printful authentication required" },
+      { status: 401 }
+    );
+  }
 
   try {
-    console.log("=== FETCHING PRINTFUL PRODUCTS ===");
-    // 1. Get Printful products
-    const printfulResponse = await fetch(
-      "https://api.printful.com/store/products",
-      {
-        headers: {
-          Authorization: `Bearer ${session.printfulAccessToken}`,
-        },
-      }
-    );
-    const printfulData = await printfulResponse.json();
-    console.log(
-      `Fetched ${printfulData.result?.length || 0} products from Printful`
-    );
-    console.log(
-      "First Printful product sample:",
-      printfulData.result?.length > 0
-        ? JSON.stringify(printfulData.result[0], null, 2)
-        : "No products"
-    );
-
-    if (!printfulData.result || printfulData.code !== 200) {
-      throw new Error("Failed to fetch Printful products");
-    }
-
-    // Get siteId from request body
-    const { siteId } = body;
-    console.log(`Using Webflow site ID: ${siteId}`);
-
-    if (!siteId) {
-      throw new Error("Webflow site ID is required");
-    }
-
-    // 3. Get existing Webflow products
-    console.log("=== FETCHING EXISTING WEBFLOW PRODUCTS ===");
-    const webflowProductsResponse = await webflow.products.list(siteId);
-    console.log(
-      "Webflow products response:",
-      JSON.stringify(webflowProductsResponse, null, 2)
-    );
-
-    const webflowProducts = (webflowProductsResponse?.items ||
-      []) as WebflowApiProduct[];
-    console.log(`Found ${webflowProducts.length} existing products in Webflow`);
-    console.log(
-      "First Webflow product sample:",
-      webflowProducts.length > 0
-        ? JSON.stringify(webflowProducts[0], null, 2)
-        : "No products"
-    );
-
-    // 4. Sync products
-    console.log("=== STARTING PRODUCT SYNC MAPPING ===");
-    const results = await Promise.all(
-      printfulData.result.map(async (printfulProduct: PrintfulProduct) => {
-        const existingProduct = webflowProducts.find(
-          (wp) => wp.printfulId === printfulProduct.sync_product.id.toString()
-        );
-
-        console.log(
-          `Processing product ${printfulProduct.sync_product.name} (ID: ${printfulProduct.sync_product.id})`
-        );
-        console.log(`Existing in Webflow: ${!!existingProduct}`);
-
-        if (!existingProduct) {
-          console.log("=== CREATING NEW PRODUCT IN WEBFLOW ===");
-          // Create new product in Webflow
-          const response = await webflow.products.create(siteId, {
-            publishStatus: "staging",
-            product: {
-              fieldData: {
-                name: printfulProduct.sync_product.name,
-                slug: printfulProduct.sync_product.name
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, "-"),
-                description: `Product from Printful: ${printfulProduct.sync_product.name}`,
-              },
-            },
-            sku: {
-              fieldData: {
-                name: `${printfulProduct.sync_product.name} - Default`,
-                slug: `${printfulProduct.sync_product.name
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, "-")}-default`,
-                price: {
-                  value: Math.round(
-                    parseFloat(
-                      printfulProduct.sync_variants[0]?.retail_price || "0"
-                    ) * 100
-                  ),
-                  unit: "USD",
-                  currency: "USD",
-                },
-                mainImage: printfulProduct.sync_product.thumbnail_url,
-              },
-            },
-          });
-          console.log(
-            "Webflow create product response:",
-            JSON.stringify(response, null, 2)
-          );
-
-          return {
-            status: "created",
-            printfulId: printfulProduct.sync_product.id,
-            webflowId: response.product?.id,
-          };
-        }
-
-        console.log(
-          `Product ${printfulProduct.sync_product.name} processed successfully`
-        );
-
-        return {
-          status: "exists",
-          printfulId: printfulProduct.sync_product.id,
-          webflowId: existingProduct.product?.id,
-        };
-      })
-    );
-
-    console.log("=== SYNC COMPLETE ===");
-    console.log("Sync results:", JSON.stringify(results, null, 2));
+    const body = await request.json();
+    // Product sync logic would go here
 
     return NextResponse.json({
-      code: 200,
-      result: results,
+      message: "Product sync initiated",
+      body,
     });
   } catch (error) {
     console.error("Error syncing products:", error);

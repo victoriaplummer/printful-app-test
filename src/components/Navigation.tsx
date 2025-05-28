@@ -1,25 +1,44 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Navigation() {
-  const { data: session } = useSession();
   const pathname = usePathname();
+
+  // Safely handle OAuth tokens with error boundary
+  let isSignedIn = false;
+  let isFullyConnected = () => false;
+  let clearTokens = async (provider: "webflow" | "printful") => {
+    // Default implementation does nothing
+    console.log(`Would clear ${provider} tokens if Clerk was available`);
+  };
+
+  try {
+    const oauthHook = useOAuthTokens();
+    isSignedIn = oauthHook.isSignedIn || false;
+    isFullyConnected = oauthHook.isFullyConnected;
+    clearTokens = oauthHook.clearTokens;
+  } catch {
+    // Clerk not available, use defaults
+    console.log("Clerk not available, using default values");
+  }
 
   const isActive = (path: string) => pathname === path;
 
-  const handleSignOut = async () => {
-    if (session?.printfulAccessToken && session?.webflowAccessToken) {
+  const handleDisconnectAll = async () => {
+    if (isFullyConnected()) {
       if (
         !confirm("This will disconnect both Printful and Webflow. Continue?")
       ) {
         return;
       }
+      await clearTokens("webflow");
+      await clearTokens("printful");
     }
-    await signOut();
   };
 
   return (
@@ -55,7 +74,7 @@ export default function Navigation() {
             <li>
               <Link href="/auth-status">Auth Status</Link>
             </li>
-            {session && (
+            {isSignedIn && (
               <li>
                 <Link href="/account">Account</Link>
               </li>
@@ -90,7 +109,7 @@ export default function Navigation() {
               Auth Status
             </Link>
           </li>
-          {session && (
+          {isSignedIn && (
             <li>
               <Link
                 href="/account"
@@ -105,15 +124,25 @@ export default function Navigation() {
 
       <div className="navbar-end">
         <ThemeToggle />
-        {session ? (
-          <button onClick={handleSignOut} className="btn btn-ghost ml-2">
-            Sign out
-          </button>
-        ) : (
-          <Link href="/api/auth/signin" className="btn btn-ghost ml-2">
-            Sign in
-          </Link>
-        )}
+        <SignedIn>
+          <div className="flex items-center gap-2">
+            {isFullyConnected() && (
+              <button
+                onClick={handleDisconnectAll}
+                className="btn btn-ghost btn-sm"
+                title="Disconnect OAuth services"
+              >
+                Disconnect
+              </button>
+            )}
+            <UserButton />
+          </div>
+        </SignedIn>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button className="btn btn-ghost ml-2">Sign in</button>
+          </SignInButton>
+        </SignedOut>
       </div>
     </div>
   );

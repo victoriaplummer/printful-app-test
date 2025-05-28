@@ -67,17 +67,6 @@ const syncProduct = async ({
       { settings }
     );
 
-    // Ensure the user is authenticated first by checking the session
-    const sessionResponse = await fetch("/cosmic/api/auth/session");
-    const sessionData = await sessionResponse.json();
-
-    if (!sessionData || !sessionData.user) {
-      console.error("Not authenticated - session check failed", sessionData);
-      throw new Error("You need to be logged in to sync products");
-    }
-
-    console.log("Session check passed, proceeding with sync");
-
     const response = await fetch(`/cosmic/api/webflow/sync`, {
       method: "POST",
       headers: {

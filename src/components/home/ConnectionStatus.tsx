@@ -1,23 +1,45 @@
 "use client";
 
-import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 
 export default function ConnectionStatus() {
-  const { data: session } = useSession();
   const router = useRouter();
+  const {
+    isSignedIn,
+    webflowTokens,
+    printfulTokens,
+    isFullyConnected,
+    getAuthUrl,
+  } = useOAuthTokens();
 
-  const handleSignIn = async (provider: "printful" | "webflow") => {
+  const handleConnect = async (provider: "printful" | "webflow") => {
+    if (!isSignedIn) {
+      alert("Please sign in first");
+      return;
+    }
+
     try {
-      await signIn(provider, {
-        redirect: true,
-        callbackUrl: window.location.origin,
-      });
+      const authUrl = getAuthUrl(provider);
+      window.location.href = authUrl;
     } catch (error) {
-      console.error(`Error signing in with ${provider}:`, error);
+      console.error(`Error connecting to ${provider}:`, error);
       alert(`Failed to connect to ${provider}. Please try again.`);
     }
   };
+
+  if (!isSignedIn) {
+    return (
+      <div className="card bg-base-100 shadow-xl">
+        <div className="card-body">
+          <h2 className="card-title">Integration Status</h2>
+          <div className="alert alert-info">
+            <span>Please sign in to connect your services.</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card bg-base-100 shadow-xl">
@@ -27,22 +49,22 @@ export default function ConnectionStatus() {
           <ServiceConnection
             name="Webflow"
             step={1}
-            isConnected={!!session?.webflowAccessToken}
-            onConnect={() => handleSignIn("webflow")}
+            isConnected={!!webflowTokens}
+            onConnect={() => handleConnect("webflow")}
             buttonVariant="neutral"
           />
 
           <ServiceConnection
             name="Printful"
             step={2}
-            isConnected={!!session?.printfulAccessToken}
-            onConnect={() => handleSignIn("printful")}
+            isConnected={!!printfulTokens}
+            onConnect={() => handleConnect("printful")}
             buttonVariant="primary"
-            disabled={!session?.webflowAccessToken}
+            disabled={!webflowTokens}
           />
         </div>
 
-        {session?.isMultiConnected && (
+        {isFullyConnected() && (
           <div className="alert alert-success mt-6">
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WebflowSiteSelector from "@/components/WebflowSiteSelector";
 import {
@@ -9,19 +9,19 @@ import {
 } from "@/hooks/useWebflowSettings";
 
 interface WebflowSettingsProps {
-  onSettingsChange?: (settings: WebflowSettingsData) => void;
-  initialSettings?: Partial<WebflowSettingsData>;
+  onSettingsChange: (settings: WebflowSettingsData) => void;
+  initialSettings: WebflowSettingsData;
 }
 
 export default function WebflowSettings({
   onSettingsChange,
 }: WebflowSettingsProps) {
-  const { data: session } = useSession();
+  const { webflowTokens } = useOAuthTokens();
   const { settings, updateSettings } = useWebflowSettings();
   const queryClient = useQueryClient();
 
   // Fetch sites using TanStack Query
-  const { data: sites, isLoading } = useQuery({
+  const { data: sitesData, isLoading } = useQuery({
     queryKey: ["webflow-sites"],
     queryFn: async () => {
       const response = await fetch("/cosmic/api/webflow/sites");
@@ -30,7 +30,7 @@ export default function WebflowSettings({
       }
       return response.json();
     },
-    enabled: !!session?.webflowAccessToken,
+    enabled: !!webflowTokens,
   });
 
   const handleSiteChange = (siteId: string) => {
@@ -60,7 +60,7 @@ export default function WebflowSettings({
     onSettingsChange?.(updatedSettings);
   };
 
-  if (!session?.webflowAccessToken) {
+  if (!webflowTokens) {
     return (
       <div className="alert alert-warning">
         <svg
@@ -94,7 +94,7 @@ export default function WebflowSettings({
         </p>
 
         <WebflowSiteSelector
-          sites={sites?.result || []}
+          sites={sitesData?.result || []}
           selectedSiteId={settings.siteId}
           onSiteSelect={handleSiteChange}
         />

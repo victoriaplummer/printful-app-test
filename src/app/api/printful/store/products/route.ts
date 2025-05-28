@@ -1,8 +1,8 @@
-import { auth } from "@/app/api/auth/auth.config";
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
 import * as Webflow from "webflow-api/api";
-import { getProviderToken } from "../../../auth/printful.config";
+import { getOAuthTokens } from "@/lib/auth/server-tokens";
 import {
   getPrintfulProducts,
   getPrintfulProduct,
@@ -43,26 +43,23 @@ interface PrintfulVariantDetails {
 }
 
 export async function GET(request: Request) {
-  const session = await auth();
+  const { userId } = await auth();
 
-  if (!session) {
+  if (!userId) {
     return NextResponse.json(
       { error: "Authentication required" },
       { status: 401 }
     );
   }
 
-  if (!session.printfulAccessToken) {
-    // Try to get token from Redis/memory as fallback
-    const token = await getProviderToken("printful");
-    if (!token) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-    // Use the token from Redis/memory
-    session.printfulAccessToken = token;
+  // Get tokens from Clerk metadata
+  const { printfulTokens, webflowTokens } = await getOAuthTokens(userId);
+
+  if (!printfulTokens?.access_token) {
+    return NextResponse.json(
+      { error: "Printful authentication required" },
+      { status: 401 }
+    );
   }
 
   // Get siteId from URL params
@@ -76,18 +73,7 @@ export async function GET(request: Request) {
     );
   }
 
-  // Debug: Log session details
-  // console.log("Printful Store Products API - Session:", {
-  //   hasSession: !!session,
-  //   hasPrintfulToken: !!session?.printfulAccessToken,
-  //   tokenPrefix: session?.printfulAccessToken
-  //     ? session.printfulAccessToken.substring(0, 10) + "..."
-  //     : "none",
-  //   sessionKeys: session ? Object.keys(session) : [],
-  // });
-
-  // Add type assertion for the token since we've already checked it exists
-  const accessToken = session.printfulAccessToken as string;
+  const accessToken = printfulTokens.access_token;
 
   try {
     console.log(
@@ -111,7 +97,7 @@ export async function GET(request: Request) {
         try {
           const detailData = await getPrintfulProduct(
             product.id.toString(),
-            accessToken // Use the asserted token
+            accessToken
           );
 
           if (!detailData || !detailData.sync_variants) {
@@ -124,7 +110,7 @@ export async function GET(request: Request) {
               try {
                 const variantDetails = (await getPrintfulVariant(
                   variant.id.toString(),
-                  accessToken // Use the asserted token
+                  accessToken
                 )) as PrintfulVariantDetails;
 
                 // Create consistent variant object
@@ -175,10 +161,10 @@ export async function GET(request: Request) {
 
     // Step 4: Add Webflow sync status information
     const webflowProductsMap = new Map();
-    if (session.webflowAccessToken && siteId) {
+    if (webflowTokens?.access_token && siteId) {
       try {
         const webflowClient = new WebflowClient({
-          accessToken: session.webflowAccessToken as string,
+          accessToken: webflowTokens.access_token,
         });
 
         const webflowProducts = await webflowClient.products.list(siteId);

@@ -1,6 +1,7 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
+import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import { useState } from "react";
 
 interface ApiResponse {
@@ -9,14 +10,15 @@ interface ApiResponse {
 }
 
 export default function AuthStatusPage() {
-  const { data: session, status } = useSession();
+  const { user, isSignedIn } = useUser();
+  const { webflowTokens, printfulTokens, isFullyConnected } = useOAuthTokens();
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const testApi = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/printful/store/products");
+      const response = await fetch("/cosmic/api/printful/store/products");
       const data = await response.json();
       setApiResponse(data);
     } catch (error) {
@@ -35,21 +37,36 @@ export default function AuthStatusPage() {
           {/* Card for the session data */}
           <div className="card bg-base-100 shadow-xl mb-6">
             <div className="card-body">
-              <h2 className="card-title">Session Status</h2>
+              <h2 className="card-title">Authentication Status</h2>
               <div className="overflow-x-auto">
                 <table className="table">
                   <thead>
                     <tr>
+                      <th>Service</th>
                       <th>Status</th>
-                      <th>Printful</th>
-                      <th>Webflow</th>
+                      <th>Details</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td>{status}</td>
+                      <td>Clerk Auth</td>
                       <td>
-                        {session?.printfulAccessToken ? (
+                        {isSignedIn ? (
+                          <span className="badge badge-success">Signed In</span>
+                        ) : (
+                          <span className="badge badge-error">
+                            Not Signed In
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {user?.emailAddresses?.[0]?.emailAddress || "N/A"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Printful OAuth</td>
+                      <td>
+                        {printfulTokens ? (
                           <span className="badge badge-success">Connected</span>
                         ) : (
                           <span className="badge badge-error">
@@ -58,27 +75,72 @@ export default function AuthStatusPage() {
                         )}
                       </td>
                       <td>
-                        {session?.webflowAccessToken ? (
+                        {printfulTokens?.expires_at
+                          ? `Expires: ${new Date(
+                              printfulTokens.expires_at * 1000
+                            ).toLocaleString()}`
+                          : "No expiration"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Webflow OAuth</td>
+                      <td>
+                        {webflowTokens ? (
                           <span className="badge badge-success">Connected</span>
                         ) : (
                           <span className="badge badge-error">
                             Not Connected
                           </span>
                         )}
+                      </td>
+                      <td>
+                        {webflowTokens?.expires_at
+                          ? `Expires: ${new Date(
+                              webflowTokens.expires_at * 1000
+                            ).toLocaleString()}`
+                          : "No expiration"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Full Integration</td>
+                      <td>
+                        {isFullyConnected() ? (
+                          <span className="badge badge-success">Ready</span>
+                        ) : (
+                          <span className="badge badge-warning">
+                            Incomplete
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {isFullyConnected()
+                          ? "All services connected"
+                          : "Connect both Printful and Webflow"}
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
-              {/* Raw session data - collapsed by default */}
+              {/* Raw token data - collapsed by default */}
               <div className="collapse collapse-arrow bg-base-200 mt-4">
                 <input type="checkbox" className="peer" />
-                <div className="collapse-title">Raw Session Data</div>
+                <div className="collapse-title">Raw Token Data</div>
                 <div className="collapse-content">
-                  <pre className="p-4 bg-neutral text-neutral-content rounded-box overflow-x-auto text-xs">
-                    {JSON.stringify(session, null, 2)}
-                  </pre>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-semibold">Printful Tokens:</h4>
+                      <pre className="p-4 bg-neutral text-neutral-content rounded-box overflow-x-auto text-xs">
+                        {JSON.stringify(printfulTokens, null, 2)}
+                      </pre>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Webflow Tokens:</h4>
+                      <pre className="p-4 bg-neutral text-neutral-content rounded-box overflow-x-auto text-xs">
+                        {JSON.stringify(webflowTokens, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -95,7 +157,7 @@ export default function AuthStatusPage() {
               <button
                 className="btn btn-primary w-full"
                 onClick={testApi}
-                disabled={isLoading || !session?.printfulAccessToken}
+                disabled={isLoading || !printfulTokens}
               >
                 {isLoading ? (
                   <>
