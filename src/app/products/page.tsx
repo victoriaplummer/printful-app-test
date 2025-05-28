@@ -9,6 +9,7 @@ import { ProductsList } from "@/components/products/ProductsList";
 import { ProductsFilters } from "@/components/products/ProductsFilters";
 import { useQuery } from "@tanstack/react-query";
 import { useWebflowSettings } from "@/hooks/useWebflowSettings";
+import ClientOnly from "@/components/ClientOnly";
 
 // Prevent static prerendering since this page uses client-side auth
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ const fetchProducts = async (siteId: string) => {
   }
 };
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const { isSignedIn } = useUser();
   const { isFullyConnected } = useOAuthTokens();
   const router = useRouter();
@@ -131,5 +132,21 @@ export default function ProductsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <ClientOnly
+      fallback={
+        <div className="flex min-h-screen flex-col">
+          <main className="flex-1 p-8">
+            <div className="max-w-6xl mx-auto">Loading...</div>
+          </main>
+        </div>
+      }
+    >
+      <ProductsPageContent />
+    </ClientOnly>
   );
 }

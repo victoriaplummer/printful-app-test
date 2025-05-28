@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import OAuthManager from "@/components/auth/OAuthManager";
+import ClientOnly from "@/components/ClientOnly";
 
 // Prevent static prerendering since this page uses client-side auth
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const { isFullyConnected } = useOAuthTokens();
 
@@ -74,5 +75,21 @@ export default function Home() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ClientOnly
+      fallback={
+        <div className="flex min-h-screen flex-col">
+          <main className="flex-1 p-8">
+            <div className="w-full max-w-6xl mx-auto">Loading...</div>
+          </main>
+        </div>
+      }
+    >
+      <HomeContent />
+    </ClientOnly>
   );
 }

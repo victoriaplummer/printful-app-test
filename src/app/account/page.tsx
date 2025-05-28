@@ -4,11 +4,12 @@ import { useUser } from "@clerk/nextjs";
 import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import ClientOnly from "@/components/ClientOnly";
 
 // Prevent static prerendering since this page uses client-side auth
 export const dynamic = "force-dynamic";
 
-export default function AccountPage() {
+function AccountPageContent() {
   const { user, isSignedIn } = useUser();
   const { isFullyConnected } = useOAuthTokens();
   const router = useRouter();
@@ -47,5 +48,15 @@ export default function AccountPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <ClientOnly
+      fallback={<div className="container mx-auto p-4">Loading...</div>}
+    >
+      <AccountPageContent />
+    </ClientOnly>
   );
 }

@@ -3,6 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import { useState } from "react";
+import ClientOnly from "@/components/ClientOnly";
 
 // Prevent static prerendering since this page uses client-side auth
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ interface ApiResponse {
   result?: unknown;
 }
 
-export default function AuthStatusPage() {
+function AuthStatusPageContent() {
   const { user, isSignedIn } = useUser();
   const { webflowTokens, printfulTokens, isFullyConnected } = useOAuthTokens();
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
@@ -187,5 +188,21 @@ export default function AuthStatusPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AuthStatusPage() {
+  return (
+    <ClientOnly
+      fallback={
+        <div className="flex min-h-screen flex-col">
+          <main className="flex-1 p-8">
+            <div className="max-w-4xl mx-auto">Loading...</div>
+          </main>
+        </div>
+      }
+    >
+      <AuthStatusPageContent />
+    </ClientOnly>
   );
 }
