@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAuthUrl } from "@/lib/auth/oauth";
-import { auth } from "@clerk/nextjs/server";
+import { getOrCreateSession } from "@/lib/auth/session";
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { session, response: sessionResponse } = await getOrCreateSession(
+      request
+    );
 
     const searchParams = request.nextUrl.searchParams;
     const provider = searchParams.get("provider") as "webflow" | "printful";
@@ -20,9 +18,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const authUrl = generateAuthUrl(provider, userId);
+    const authUrl = generateAuthUrl(provider, session.sessionId);
 
-    return NextResponse.json({ authUrl });
+    const responseData = { authUrl };
+
+    if (sessionResponse) {
+      // New session created, need to set cookie
+      const response = NextResponse.json(responseData);
+      const sessionCookie = sessionResponse.cookies.get("session_id");
+      if (sessionCookie) {
+        response.cookies.set(sessionCookie);
+      }
+      return response;
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Error generating auth URL:", error);
     return NextResponse.json(

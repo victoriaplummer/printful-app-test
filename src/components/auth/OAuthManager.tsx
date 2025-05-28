@@ -2,78 +2,43 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
+import { useSession } from "@/hooks/useSession";
 
 export default function OAuthManager() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const {
-    isSignedIn,
-    getAuthUrl,
-    storeTokens,
-    webflowTokens,
-    printfulTokens,
-    isFullyConnected,
-  } = useOAuthTokens();
+  const { sessionId, webflowTokens, printfulTokens, isFullyConnected } =
+    useSession();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Handle OAuth callback tokens from URL params
+  // Handle OAuth callback success messages
   useEffect(() => {
     const handleCallback = async () => {
-      // Handle Webflow callback
+      // Handle Webflow callback success
       if (searchParams.get("webflow_success") === "true") {
-        const token = searchParams.get("webflow_token");
-        const refresh = searchParams.get("webflow_refresh");
-        const expires = searchParams.get("webflow_expires");
-
-        if (token) {
-          await storeTokens("webflow", {
-            access_token: token,
-            refresh_token: refresh || undefined,
-            expires_at: expires ? parseInt(expires) : undefined,
-            token_type: "Bearer",
-          });
-
-          // Clean up URL
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete("webflow_success");
-          newUrl.searchParams.delete("webflow_token");
-          newUrl.searchParams.delete("webflow_refresh");
-          newUrl.searchParams.delete("webflow_expires");
-          router.replace(newUrl.pathname + newUrl.search);
-        }
+        // Clean up URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("webflow_success");
+        router.replace(newUrl.pathname + newUrl.search);
       }
 
-      // Handle Printful callback
+      // Handle Printful callback success
       if (searchParams.get("printful_success") === "true") {
-        const token = searchParams.get("printful_token");
-        const refresh = searchParams.get("printful_refresh");
-        const expires = searchParams.get("printful_expires");
-
-        if (token) {
-          await storeTokens("printful", {
-            access_token: token,
-            refresh_token: refresh || undefined,
-            expires_at: expires ? parseInt(expires) : undefined,
-            token_type: "Bearer",
-          });
-
-          // Clean up URL
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete("printful_success");
-          newUrl.searchParams.delete("printful_token");
-          newUrl.searchParams.delete("printful_refresh");
-          newUrl.searchParams.delete("printful_expires");
-          router.replace(newUrl.pathname + newUrl.search);
-        }
+        // Clean up URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("printful_success");
+        router.replace(newUrl.pathname + newUrl.search);
       }
 
       // Handle errors
       const error = searchParams.get("error");
       if (error) {
-        setError(`Authentication failed: ${error}`);
+        const details = searchParams.get("details");
+        setError(
+          `Authentication failed: ${error}${details ? ` - ${details}` : ""}`
+        );
         // Clean up URL
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete("error");
@@ -83,11 +48,11 @@ export default function OAuthManager() {
     };
 
     handleCallback();
-  }, [searchParams, storeTokens, router]);
+  }, [searchParams, router]);
 
   const handleConnect = async (provider: "webflow" | "printful") => {
-    if (!isSignedIn) {
-      setError("Please sign in first");
+    if (!sessionId) {
+      setError("Session not available");
       return;
     }
 
@@ -95,24 +60,24 @@ export default function OAuthManager() {
     setError(null);
 
     try {
-      const authUrl = await getAuthUrl(provider);
-      window.location.href = authUrl;
+      const response = await fetch(
+        `/cosmic/api/auth/url?provider=${provider}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get auth URL: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      window.location.href = data.authUrl;
     } catch (err) {
       setError(`Failed to initiate ${provider} connection: ${err}`);
       setIsLoading(false);
     }
   };
-
-  if (!isSignedIn) {
-    return (
-      <div className="p-6 border rounded-lg">
-        <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
-        <p className="text-gray-600">
-          Please sign in to connect your Webflow and Printful accounts.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -202,14 +167,24 @@ export default function OAuthManager() {
         </div>
       </div>
 
+      {/* Status Summary */}
       {isFullyConnected() && (
         <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
           <div className="flex items-center space-x-2 text-green-700">
-            <span>✓</span>
-            <span className="font-medium">
-              All services connected! You can now sync products between Printful
-              and Webflow.
+            <span>✅</span>
+            <span>
+              Both services connected! You can now sync products between
+              Printful and Webflow.
             </span>
+          </div>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
+          <div className="flex items-center space-x-2 text-blue-700">
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span>Connecting...</span>
           </div>
         </div>
       )}

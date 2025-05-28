@@ -52,112 +52,44 @@ export interface SyncResponse {
   details?: string;
 }
 
-export const fetchPrintfulProducts = async () => {
+export const fetchPrintfulProducts = async (): Promise<PrintfulProduct[]> => {
   try {
-    // First, fetch the product list
-    const productsResponse = await fetch(
-      "/cosmic/api/printful/store/products",
+    const response = await fetch("/cosmic/api/printful/store/products", {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.result || [];
+  } catch (error) {
+    console.error("Error fetching Printful products:", error);
+    throw error;
+  }
+};
+
+export const fetchPrintfulProduct = async (
+  productId: string
+): Promise<PrintfulProduct | null> => {
+  try {
+    const response = await fetch(
+      `/api/printful/store/product?id=${productId}`,
       {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        credentials: "include",
       }
     );
 
-    if (!productsResponse.ok) {
-      console.error(
-        "Failed to fetch products:",
-        productsResponse.status,
-        productsResponse.statusText
-      );
-      return []; // Return empty array instead of throwing
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const productsData = await productsResponse.json();
-    const productsList = productsData.result || [];
-
-    if (!Array.isArray(productsList) || productsList.length === 0) {
-      console.log("No products found in Printful store");
-      return [];
-    }
-
-    console.log(`Found ${productsList.length} products, fetching details...`);
-
-    // Fetch detailed information for each product
-    const productsWithDetails = await Promise.all(
-      productsList.map(async (product) => {
-        try {
-          const detailResponse = await fetch(
-            `/cosmic/api/printful/store/product?id=${product.id}`,
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!detailResponse.ok) {
-            console.warn(`Failed to fetch details for product ${product.id}`);
-            // Return a product with placeholder variants
-            return {
-              id: product.id.toString(),
-              name: product.name,
-              thumbnail_url: product.thumbnail_url,
-              variants: Array(product.variants || 0)
-                .fill(null)
-                .map((_, index) => ({
-                  id: `temp-${product.id}-${index}`,
-                  name: `Variant ${index + 1}`,
-                  variant_id: `temp-variant-${index}`,
-                  product_id: product.id.toString(),
-                  retail_price: "0.00",
-                  sync_status: "not_synced",
-                })),
-            };
-          }
-
-          const detailData = await detailResponse.json();
-
-          // Map the product detail to the expected format
-          return {
-            id: product.id.toString(),
-            name: product.name,
-            thumbnail_url: product.thumbnail_url,
-            // Use sync_variants from the detail data, or create placeholders if missing
-            variants: (detailData.result?.sync_variants || []).map(
-              (variant: PrintfulVariant) => ({
-                id: variant.id.toString(),
-                name: variant.name,
-                variant_id: variant.variant_id.toString(),
-                product_id: product.id.toString(),
-                retail_price: variant.retail_price || "0.00",
-                sync_status: "not_synced", // Default status
-              })
-            ),
-          };
-        } catch (error) {
-          console.error(
-            `Error fetching details for product ${product.id}:`,
-            error
-          );
-          // Return a product with placeholder variants on error
-          return {
-            id: product.id.toString(),
-            name: product.name,
-            thumbnail_url: product.thumbnail_url,
-            variants: [],
-          };
-        }
-      })
-    );
-
-    console.log(
-      `Successfully fetched details for ${productsWithDetails.length} products`
-    );
-    return productsWithDetails;
+    const data = await response.json();
+    return data.result || null;
   } catch (error) {
-    console.error("Error fetching products:", error);
-    return []; // Return empty array on any error
+    console.error("Error fetching Printful product:", error);
+    throw error;
   }
 };
 

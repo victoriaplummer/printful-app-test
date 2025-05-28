@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
 import * as Webflow from "webflow-api/api";
@@ -43,17 +42,8 @@ interface PrintfulVariantDetails {
 }
 
 export async function GET(request: Request) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 }
-    );
-  }
-
-  // Get tokens from Clerk metadata
-  const { printfulTokens, webflowTokens } = await getOAuthTokens(userId);
+  // Get tokens from session
+  const { printfulTokens, webflowTokens } = await getOAuthTokens();
 
   if (!printfulTokens?.access_token) {
     return NextResponse.json(

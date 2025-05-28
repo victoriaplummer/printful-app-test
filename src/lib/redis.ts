@@ -1,4 +1,4 @@
-import Redis from "ioredis";
+import { getUpstashClient } from "./upstash-redis";
 
 // Add this check at the top of the file
 if (typeof window !== "undefined") {
@@ -13,11 +13,8 @@ const PRINTFUL_TOKEN_KEY = "auth:printful:token";
 const WEBFLOW_TOKEN_KEY = "auth:webflow:token";
 
 // Flag to track if we should try to use Redis or just fallback to memory
-let useRedisClient = false;
-let redisClient: Redis | null = null;
-
-// Singleton pattern to prevent multiple connections
-let isConnecting = false;
+let useUpstashClient = false;
+let upstashClient: ReturnType<typeof getUpstashClient> | null = null;
 
 // Add at the top of the file
 const memoryCache: Record<string, { value: string; expires: number }> = {};
@@ -29,73 +26,47 @@ const isAuthPath = () => {
     // Check if we're in an auth-related path
     const isNextAuthPath =
       process.env.NEXT_RUNTIME === "nodejs" &&
-      (process.env.PATH_INFO?.includes("/api/auth") ||
-        process.env.NEXT_URL?.includes("/api/auth"));
+      (process.env.PATH_INFO?.includes("/cosmic/api/auth") ||
+        process.env.NEXT_URL?.includes("cosmic/api/auth"));
 
     return isNextAuthPath;
   }
   return false;
 };
 
-// Only initialize Redis if we're in a production environment or explicitly enabled
-const getRedisClient = () => {
+// Only initialize Upstash if we're in a production environment or explicitly enabled
+const getUpstashRedisClient = () => {
   // For auth paths, we'll skip Redis to avoid timeout issues
   if (isAuthPath()) {
     console.log("Auth path detected, using memory storage only");
     return null;
   }
 
-  // If we already have a client or we're connecting, return the existing client
-  if (redisClient !== null || isConnecting) {
-    return redisClient;
+  // If we already have a client, return it
+  if (upstashClient !== null) {
+    return upstashClient;
   }
 
   try {
-    isConnecting = true;
-
-    // Upstash Redis URL format: redis://username:password@host:port
+    // Check if we have the required environment variables
     const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      console.log("No Redis URL provided. Using in-memory storage only.");
+    const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (!redisUrl && !restToken) {
+      console.log(
+        "No Upstash Redis configuration found. Using in-memory storage only."
+      );
       return null;
     }
 
-    useRedisClient = true;
+    useUpstashClient = true;
+    upstashClient = getUpstashClient();
 
-    redisClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      connectTimeout: 10000, // 10 seconds
-      enableReadyCheck: true,
-      tls: {
-        rejectUnauthorized: false, // Required for Upstash
-      },
-      retryStrategy: (times) => {
-        if (times > 3) {
-          console.log("Redis connection failed, using memory storage instead");
-          useRedisClient = false;
-          isConnecting = false;
-          return null;
-        }
-        return Math.min(times * 200, 1000); // Exponential backoff
-      },
-    });
-
-    redisClient.on("error", (err) => {
-      console.error("Redis connection error:", err);
-      useRedisClient = false;
-    });
-
-    redisClient.on("connect", () => {
-      console.log("Redis connected successfully");
-      useRedisClient = true;
-      isConnecting = false;
-    });
-
-    return redisClient;
+    console.log("Upstash Redis client initialized successfully");
+    return upstashClient;
   } catch (error) {
-    console.error("Error initializing Redis:", error);
-    useRedisClient = false;
-    isConnecting = false;
+    console.error("Error initializing Upstash Redis:", error);
+    useUpstashClient = false;
     return null;
   }
 };
@@ -115,13 +86,13 @@ export async function storeToken(
   // Always store in memory
   memoryTokenStore[fullKey] = token;
 
-  // Try Redis if available
-  const client = getRedisClient();
-  if (useRedisClient && client) {
+  // Try Upstash if available
+  const client = getUpstashRedisClient();
+  if (useUpstashClient && client) {
     try {
-      await client.set(fullKey, token, "EX", expiryInSeconds);
+      await client.set(fullKey, token, { EX: expiryInSeconds });
     } catch (error) {
-      console.error(`Redis error (fallback to memory): ${error}`);
+      console.error(`Upstash error (fallback to memory): ${error}`);
     }
   }
 }
@@ -136,9 +107,9 @@ export async function getToken(
   const key = provider === "printful" ? PRINTFUL_TOKEN_KEY : WEBFLOW_TOKEN_KEY;
   const fullKey = `${key}:${userId}`;
 
-  // Try Redis first if available
-  const client = getRedisClient();
-  if (useRedisClient && client) {
+  // Try Upstash first if available
+  const client = getUpstashRedisClient();
+  if (useUpstashClient && client) {
     try {
       const token = await client.get(fullKey);
       if (token) {
@@ -147,7 +118,7 @@ export async function getToken(
         return token;
       }
     } catch (error) {
-      console.error(`Redis error (fallback to memory): ${error}`);
+      console.error(`Upstash error (fallback to memory): ${error}`);
     }
   }
 
@@ -169,13 +140,13 @@ export async function storeProviderToken(
   // Always store in memory
   memoryTokenStore[key] = token;
 
-  // Try Redis if available
-  const client = getRedisClient();
-  if (useRedisClient && client) {
+  // Try Upstash if available
+  const client = getUpstashRedisClient();
+  if (useUpstashClient && client) {
     try {
-      await client.set(key, token, "EX", expiryInSeconds);
+      await client.set(key, token, { EX: expiryInSeconds });
     } catch (error) {
-      console.error(`Redis error (fallback to memory): ${error}`);
+      console.error(`Upstash error (fallback to memory): ${error}`);
     }
   }
 }
@@ -194,9 +165,9 @@ export async function getProviderToken(
     return cached.value;
   }
 
-  // Try Redis
-  const client = getRedisClient();
-  if (useRedisClient && client) {
+  // Try Upstash
+  const client = getUpstashRedisClient();
+  if (useUpstashClient && client) {
     try {
       const token = await client.get(key);
       if (token) {
@@ -208,7 +179,7 @@ export async function getProviderToken(
         return token;
       }
     } catch (error) {
-      console.error(`Redis error (fallback to memory): ${error}`);
+      console.error(`Upstash error (fallback to memory): ${error}`);
     }
   }
 
@@ -219,8 +190,8 @@ export async function getProviderTokens(): Promise<{
   printful: string | null;
   webflow: string | null;
 }> {
-  const client = getRedisClient();
-  if (useRedisClient && client) {
+  const client = getUpstashRedisClient();
+  if (useUpstashClient && client) {
     try {
       const [printfulToken, webflowToken] = await client.mget([
         PRINTFUL_TOKEN_KEY,
@@ -231,7 +202,7 @@ export async function getProviderTokens(): Promise<{
         webflow: webflowToken,
       };
     } catch (error) {
-      console.error(`Redis error (fallback to memory): ${error}`);
+      console.error(`Upstash error (fallback to memory): ${error}`);
     }
   }
 

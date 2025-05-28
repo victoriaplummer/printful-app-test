@@ -1,7 +1,6 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
-import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
+import { useSession } from "@/hooks/useSession";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ClientOnly from "@/components/ClientOnly";
@@ -10,12 +9,11 @@ import ClientOnly from "@/components/ClientOnly";
 export const dynamic = "force-dynamic";
 
 function AccountPageContent() {
-  const { user, isSignedIn } = useUser();
-  const { isFullyConnected } = useOAuthTokens();
+  const { sessionId, isFullyConnected } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isSignedIn) {
+    if (!sessionId) {
       router.push("/");
       return;
     }
@@ -24,27 +22,33 @@ function AccountPageContent() {
       router.push("/");
       return;
     }
-  }, [isSignedIn, isFullyConnected, router]);
+  }, [sessionId, isFullyConnected, router]);
 
-  if (!isSignedIn || !isFullyConnected()) {
+  if (!sessionId || !isFullyConnected()) {
     return <div>Redirecting...</div>;
   }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Account</h1>
+      <h1 className="text-2xl font-bold mb-4">Session Information</h1>
       <div className="card bg-base-100 shadow-xl">
         <div className="card-body">
-          <h2 className="card-title">User Information</h2>
+          <h2 className="card-title">Current Session</h2>
           <p>
-            <strong>Email:</strong> {user?.emailAddresses?.[0]?.emailAddress}
+            <strong>Session ID:</strong> {sessionId.substring(0, 8)}...
           </p>
           <p>
-            <strong>Name:</strong> {user?.fullName || "Not provided"}
+            <strong>Status:</strong> Active
           </p>
           <p>
-            <strong>Account Status:</strong> Active
+            <strong>Services Connected:</strong> Printful & Webflow
           </p>
+          <div className="alert alert-info mt-4">
+            <span>
+              Sessions are temporary and expire after 24 hours. You&apos;ll need
+              to reconnect your services if your session expires.
+            </span>
+          </div>
         </div>
       </div>
     </div>

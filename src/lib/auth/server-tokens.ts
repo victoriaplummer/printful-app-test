@@ -1,25 +1,20 @@
-import { clerkClient } from "@clerk/nextjs/server";
-import type { OAuthTokens } from "./oauth";
+import { getSession } from "./session";
+import { getAllSessionTokens } from "./session-tokens";
+import { OAuthTokens } from "./oauth";
 
 // Server-side token access for API routes
-export async function getOAuthTokens(userId: string): Promise<{
+export async function getOAuthTokens(): Promise<{
   webflowTokens: OAuthTokens | null;
   printfulTokens: OAuthTokens | null;
 }> {
-  try {
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const metadata = user.unsafeMetadata;
+  const session = await getSession();
 
-    return {
-      webflowTokens: (metadata.webflow_tokens as OAuthTokens) || null,
-      printfulTokens: (metadata.printful_tokens as OAuthTokens) || null,
-    };
-  } catch (error) {
-    console.error("Error fetching user tokens:", error);
+  if (!session) {
     return {
       webflowTokens: null,
       printfulTokens: null,
     };
   }
+
+  return await getAllSessionTokens(session.sessionId);
 }

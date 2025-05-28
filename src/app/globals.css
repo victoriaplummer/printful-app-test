@@ -1,8 +1,3 @@
-/* stylelint-disable */
-@import "tailwindcss";
-@plugin "daisyui" {
-  themes: silk --default, dim --prefersdark;
-}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,8 +32,7 @@ select option {
   background-color: var(--fallback-b1, oklch(var(--b1))) !important;
 }
 
-/* Firefox specifi
- fix */
+/* Firefox specific fix */
 @-moz-document url-prefix() {
   select,
   select option {

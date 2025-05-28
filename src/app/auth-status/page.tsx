@@ -1,7 +1,6 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
-import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
+import { useSession } from "@/hooks/useSession";
 import { useState } from "react";
 import ClientOnly from "@/components/ClientOnly";
 
@@ -14,8 +13,8 @@ interface ApiResponse {
 }
 
 function AuthStatusPageContent() {
-  const { user, isSignedIn } = useUser();
-  const { webflowTokens, printfulTokens, isFullyConnected } = useOAuthTokens();
+  const { sessionId, webflowTokens, printfulTokens, isFullyConnected } =
+    useSession();
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,18 +52,18 @@ function AuthStatusPageContent() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td>Clerk Auth</td>
+                      <td>Session</td>
                       <td>
-                        {isSignedIn ? (
-                          <span className="badge badge-success">Signed In</span>
+                        {sessionId ? (
+                          <span className="badge badge-success">Active</span>
                         ) : (
-                          <span className="badge badge-error">
-                            Not Signed In
-                          </span>
+                          <span className="badge badge-error">No Session</span>
                         )}
                       </td>
                       <td>
-                        {user?.emailAddresses?.[0]?.emailAddress || "N/A"}
+                        {sessionId
+                          ? `Session ID: ${sessionId.substring(0, 8)}...`
+                          : "N/A"}
                       </td>
                     </tr>
                     <tr>

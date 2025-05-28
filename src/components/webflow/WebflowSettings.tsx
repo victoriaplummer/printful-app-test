@@ -1,6 +1,6 @@
 "use client";
 
-import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
+import { useSession } from "@/hooks/useSession";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WebflowSiteSelector from "@/components/WebflowSiteSelector";
 import {
@@ -16,7 +16,7 @@ interface WebflowSettingsProps {
 export default function WebflowSettings({
   onSettingsChange,
 }: WebflowSettingsProps) {
-  const { webflowTokens } = useOAuthTokens();
+  const { webflowTokens } = useSession();
   const { settings, updateSettings } = useWebflowSettings();
   const queryClient = useQueryClient();
 

@@ -1,16 +1,16 @@
 "use client";
 
-import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
+import { useSession } from "@/hooks/useSession";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ClientOnly from "@/components/ClientOnly";
 
 function OrdersContent() {
-  const { isSignedIn, isFullyConnected } = useOAuthTokens();
+  const { sessionId, isFullyConnected } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isSignedIn) {
+    if (!sessionId) {
       router.push("/");
       return;
     }
@@ -19,9 +19,9 @@ function OrdersContent() {
       router.push("/");
       return;
     }
-  }, [isSignedIn, isFullyConnected, router]);
+  }, [sessionId, isFullyConnected, router]);
 
-  if (!isSignedIn || !isFullyConnected()) {
+  if (!sessionId || !isFullyConnected()) {
     return <div>Redirecting...</div>;
   }
 

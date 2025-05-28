@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens } from "@/lib/auth/oauth";
-import { auth } from "@clerk/nextjs/server";
+import { getOrCreateSession } from "@/lib/auth/session";
+import { storeSessionTokens } from "@/lib/auth/session-tokens";
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.redirect(new URL("/cosmic/sign-in", request.url));
-    }
+    const { session, response: sessionResponse } = await getOrCreateSession(
+      request
+    );
 
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
@@ -18,9 +17,7 @@ export async function GET(request: NextRequest) {
       console.error("Webflow OAuth error:", error);
       return NextResponse.redirect(
         new URL(
-          `/cosmic?error=webflow_auth_failed&details=${encodeURIComponent(
-            error
-          )}`,
+          `/?error=webflow_auth_failed&details=${encodeURIComponent(error)}`,
           request.url
         )
       );
@@ -28,34 +25,36 @@ export async function GET(request: NextRequest) {
 
     if (!code) {
       return NextResponse.redirect(
-        new URL("/cosmic?error=missing_code", request.url)
+        new URL("/?error=missing_code", request.url)
       );
     }
 
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens("webflow", code);
 
-    // Store tokens in user metadata via client-side redirect
-    // We'll pass the tokens as URL params for the client to handle
+    // Store tokens in session
+    await storeSessionTokens(session.sessionId, "webflow", tokens);
+
+    // Redirect back to app
     const redirectUrl = new URL("/cosmic", request.url);
     redirectUrl.searchParams.set("webflow_success", "true");
-    redirectUrl.searchParams.set("webflow_token", tokens.access_token);
-    if (tokens.refresh_token) {
-      redirectUrl.searchParams.set("webflow_refresh", tokens.refresh_token);
-    }
-    if (tokens.expires_at) {
-      redirectUrl.searchParams.set(
-        "webflow_expires",
-        tokens.expires_at.toString()
-      );
+
+    const response = NextResponse.redirect(redirectUrl);
+
+    // Set session cookie if this is a new session
+    if (sessionResponse) {
+      const sessionCookie = sessionResponse.cookies.get("session_id");
+      if (sessionCookie) {
+        response.cookies.set(sessionCookie);
+      }
     }
 
-    return NextResponse.redirect(redirectUrl);
+    return response;
   } catch (error) {
     console.error("Webflow callback error:", error);
     return NextResponse.redirect(
       new URL(
-        `/cosmic?error=webflow_callback_failed&details=${encodeURIComponent(
+        `/?error=webflow_callback_failed&details=${encodeURIComponent(
           String(error)
         )}`,
         request.url

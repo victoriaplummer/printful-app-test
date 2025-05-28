@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
+import { useSession } from "@/hooks/useSession";
 import WebflowSettings from "@/components/webflow/WebflowSettings";
 import { ProductsList } from "@/components/products/ProductsList";
 import { ProductsFilters } from "@/components/products/ProductsFilters";
@@ -38,8 +37,7 @@ const fetchProducts = async (siteId: string) => {
 };
 
 function ProductsPageContent() {
-  const { isSignedIn } = useUser();
-  const { isFullyConnected } = useOAuthTokens();
+  const { sessionId, isFullyConnected } = useSession();
   const router = useRouter();
   const { settings, updateSettings } = useWebflowSettings();
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -47,16 +45,16 @@ function ProductsPageContent() {
 
   // Redirect to home if not connected to both services
   useEffect(() => {
-    if (!isSignedIn) {
+    if (!sessionId) {
       router.push("/");
       return;
     }
 
-    if (isSignedIn && !isFullyConnected()) {
+    if (sessionId && !isFullyConnected()) {
       router.push("/");
       return;
     }
-  }, [isSignedIn, isFullyConnected, router]);
+  }, [sessionId, isFullyConnected, router]);
 
   // Fetch products with TanStack Query
   const {
@@ -66,7 +64,7 @@ function ProductsPageContent() {
   } = useQuery({
     queryKey: ["products", settings.siteId],
     queryFn: () => fetchProducts(settings.siteId),
-    enabled: !!settings.siteId && !!isSignedIn && isFullyConnected(),
+    enabled: !!settings.siteId && !!sessionId && isFullyConnected(),
     staleTime: 1000 * 60 * 5,
   });
 

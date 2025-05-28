@@ -1,31 +1,13 @@
 "use client";
 
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
+import { useSession } from "@/hooks/useSession";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Navigation() {
   const pathname = usePathname();
-
-  // Safely handle OAuth tokens with error boundary
-  let isSignedIn = false;
-  let isFullyConnected = () => false;
-  let clearTokens = async (provider: "webflow" | "printful") => {
-    // Default implementation does nothing
-    console.log(`Would clear ${provider} tokens if Clerk was available`);
-  };
-
-  try {
-    const oauthHook = useOAuthTokens();
-    isSignedIn = oauthHook.isSignedIn || false;
-    isFullyConnected = oauthHook.isFullyConnected;
-    clearTokens = oauthHook.clearTokens;
-  } catch {
-    // Clerk not available, use defaults
-    console.log("Clerk not available, using default values");
-  }
+  const { sessionId, isFullyConnected, clearTokens } = useSession();
 
   const isActive = (path: string) => pathname === path;
 
@@ -74,7 +56,7 @@ export default function Navigation() {
             <li>
               <Link href="/auth-status">Auth Status</Link>
             </li>
-            {isSignedIn && (
+            {sessionId && (
               <li>
                 <Link href="/account">Account</Link>
               </li>
@@ -109,7 +91,7 @@ export default function Navigation() {
               Auth Status
             </Link>
           </li>
-          {isSignedIn && (
+          {sessionId && (
             <li>
               <Link
                 href="/account"
@@ -124,7 +106,7 @@ export default function Navigation() {
 
       <div className="navbar-end">
         <ThemeToggle />
-        <SignedIn>
+        {sessionId && (
           <div className="flex items-center gap-2">
             {isFullyConnected() && (
               <button
@@ -135,14 +117,13 @@ export default function Navigation() {
                 Disconnect
               </button>
             )}
-            <UserButton />
+            <div className="avatar placeholder">
+              <div className="bg-neutral text-neutral-content rounded-full w-8">
+                <span className="text-xs">S</span>
+              </div>
+            </div>
           </div>
-        </SignedIn>
-        <SignedOut>
-          <SignInButton mode="modal">
-            <button className="btn btn-ghost ml-2">Sign in</button>
-          </SignInButton>
-        </SignedOut>
+        )}
       </div>
     </div>
   );

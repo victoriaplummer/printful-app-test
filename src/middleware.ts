@@ -1,34 +1,40 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { ensureSession } from "@/lib/auth/session";
 
-// Define routes that require authentication
-const isProtectedRoute = createRouteMatcher([
-  "/products(.*)",
-  "/account(.*)",
-  "/orders(.*)",
-]);
+export async function middleware(request: NextRequest) {
+  // Only handle API routes that need sessions
+  if (request.nextUrl.pathname.startsWith("/cosmic/api/")) {
+    // Skip auth routes and session routes
+    if (
+      request.nextUrl.pathname.startsWith("/cosmic/api/auth/") ||
+      request.nextUrl.pathname.startsWith("/cosmic/api/session")
+    ) {
+      return NextResponse.next();
+    }
 
-export default clerkMiddleware(async (auth, req) => {
-  // Handle Clerk JWT redirects that don't include the cosmic base path
-  const url = req.nextUrl.clone();
+    // Ensure session exists for other API routes
+    const { response } = await ensureSession(request);
 
-  // If we're at the root with a Clerk JWT and no cosmic prefix, redirect to cosmic
-  if (url.pathname === "/" && url.searchParams.has("__clerk_db_jwt")) {
-    url.pathname = "/cosmic";
-    return NextResponse.redirect(url);
+    if (response) {
+      // New session was created, return response with cookie
+      return response;
+    }
+
+    // Session exists, continue
+    return NextResponse.next();
   }
 
-  // Protect routes that require authentication
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
-});
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
-    "/(api|trpc)(.*)",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
