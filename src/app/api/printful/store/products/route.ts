@@ -9,6 +9,8 @@ import {
   getPrintfulVariant,
 } from "@/lib/api/printful";
 
+export const config = { runtime: "edge" };
+
 // Define interfaces for type safety
 interface CustomFieldData {
   sku?: string;

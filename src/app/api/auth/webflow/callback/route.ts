@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWebflowAccessToken } from "@/lib/webflow-auth";
 
-// Remove edge runtime for OpenNext Cloudflare compatibility
-// export const runtime = "edge";
+export const config = { runtime: "edge" };
 
 // Helper function to create response with headers
 function createRedirectResponse(

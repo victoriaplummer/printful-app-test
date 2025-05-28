@@ -23,8 +23,7 @@ interface WebflowOrder {
   };
 }
 
-// Remove edge runtime for OpenNext Cloudflare compatibility
-// export const config = { runtime: "edge" };
+export const config = { runtime: "edge" };
 
 export async function POST(request: Request) {
   const session = await auth();

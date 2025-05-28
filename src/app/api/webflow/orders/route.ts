@@ -2,8 +2,7 @@ import { auth } from "@/app/api/auth/auth.config";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
 
-// Remove edge runtime for OpenNext Cloudflare compatibility
-// export const config = { runtime: "edge" };
+export const config = { runtime: "edge" };
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
