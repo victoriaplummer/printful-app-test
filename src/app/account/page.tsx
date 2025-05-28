@@ -5,6 +5,9 @@ import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+// Prevent static prerendering since this page uses client-side auth
+export const dynamic = "force-dynamic";
+
 export default function AccountPage() {
   const { user, isSignedIn } = useUser();
   const { isFullyConnected } = useOAuthTokens();

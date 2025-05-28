@@ -4,6 +4,9 @@ import { useUser } from "@clerk/nextjs";
 import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import { useState } from "react";
 
+// Prevent static prerendering since this page uses client-side auth
+export const dynamic = "force-dynamic";
+
 interface ApiResponse {
   error?: string;
   result?: unknown;

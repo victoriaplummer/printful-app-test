@@ -10,6 +10,9 @@ import { ProductsFilters } from "@/components/products/ProductsFilters";
 import { useQuery } from "@tanstack/react-query";
 import { useWebflowSettings } from "@/hooks/useWebflowSettings";
 
+// Prevent static prerendering since this page uses client-side auth
+export const dynamic = "force-dynamic";
+
 // API function
 const fetchProducts = async (siteId: string) => {
   try {

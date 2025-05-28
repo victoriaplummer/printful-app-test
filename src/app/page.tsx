@@ -6,6 +6,9 @@ import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { useOAuthTokens } from "@/lib/auth/clerk-oauth";
 import OAuthManager from "@/components/auth/OAuthManager";
 
+// Prevent static prerendering since this page uses client-side auth
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   const router = useRouter();
   const { isFullyConnected } = useOAuthTokens();
