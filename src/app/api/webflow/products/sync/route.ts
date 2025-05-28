@@ -121,28 +121,34 @@ export async function POST(request: Request) {
         if (!existingProduct) {
           console.log("=== CREATING NEW PRODUCT IN WEBFLOW ===");
           // Create new product in Webflow
-          const newProduct = {
-            name: printfulProduct.sync_product.name,
-            slug: printfulProduct.sync_product.name
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-"),
-            sku: `PF-${printfulProduct.sync_product.id}`,
-            printfulId: printfulProduct.sync_product.id.toString(),
-            imageUrl: printfulProduct.sync_product.thumbnail_url,
-            variants: printfulProduct.sync_variants.map((variant) => ({
-              name: variant.name,
-              price: parseFloat(variant.retail_price || "0"),
-              sku: `PF-${variant.variant_id}`,
-              printfulVariantId: variant.variant_id.toString(),
-            })),
-          };
-
-          console.log("New product data:", JSON.stringify(newProduct, null, 2));
-
           const response = await webflow.products.create(siteId, {
             publishStatus: "staging",
             product: {
-              fieldData: newProduct,
+              fieldData: {
+                name: printfulProduct.sync_product.name,
+                slug: printfulProduct.sync_product.name
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "-"),
+                description: `Product from Printful: ${printfulProduct.sync_product.name}`,
+              },
+            },
+            sku: {
+              fieldData: {
+                name: `${printfulProduct.sync_product.name} - Default`,
+                slug: `${printfulProduct.sync_product.name
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "-")}-default`,
+                price: {
+                  value: Math.round(
+                    parseFloat(
+                      printfulProduct.sync_variants[0]?.retail_price || "0"
+                    ) * 100
+                  ),
+                  unit: "USD",
+                  currency: "USD",
+                },
+                mainImage: printfulProduct.sync_product.thumbnail_url,
+              },
             },
           });
           console.log(
