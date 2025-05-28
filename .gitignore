@@ -15,6 +15,12 @@
 # production
 /build
 
+# open-next build artifacts
+/.open-next/
+
+# wrangler (Cloudflare Workers)
+/.wrangler/
+
 # misc
 .DS_Store
 *.pem

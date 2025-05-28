@@ -1,7 +1,8 @@
 import { auth } from "../../auth/auth.config";
 import { NextResponse } from "next/server";
 
-export const config = { runtime: "edge" };
+// Remove edge runtime for OpenNext Cloudflare compatibility
+// export const config = { runtime: "edge" };
 
 export async function GET() {
   const session = await auth();
