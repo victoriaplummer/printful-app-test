@@ -2,7 +2,7 @@ import { auth } from "../../auth/auth.config";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
 
-export const runtime = "edge";
+export const config = { runtime: "edge" };
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

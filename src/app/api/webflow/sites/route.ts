@@ -2,7 +2,7 @@ import { auth } from "../../auth/auth.config";
 import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
 
-export const runtime = "edge";
+export const config = { runtime: "edge" };
 
 // Define interface based on actual API response
 interface WebflowSite {

@@ -9,7 +9,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <SessionProvider refetchInterval={5 * 60}>
+    <SessionProvider refetchInterval={5 * 60} basePath="/cosmic/api/auth">
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>{children}</ThemeProvider>
       </QueryClientProvider>

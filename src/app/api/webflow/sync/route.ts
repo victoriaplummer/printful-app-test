@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "../../auth/auth.config";
 import { WebflowClient } from "webflow-api";
 
-export const runtime = "edge";
+export const config = { runtime: "edge" };
 import { getPrintfulProduct, getPrintfulVariant } from "@/lib/api/printful";
 
 interface WebflowProductResponse {

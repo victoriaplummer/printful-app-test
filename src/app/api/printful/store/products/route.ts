@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { WebflowClient } from "webflow-api";
 import * as Webflow from "webflow-api/api";
 
-export const runtime = "edge";
+export const config = { runtime: "edge" };
 import { getProviderToken } from "../../../auth/printful.config";
 import {
   getPrintfulProducts,
